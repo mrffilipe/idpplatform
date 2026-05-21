@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogContent, DialogTitle, Stack, Typography, type DialogProps } from '@mui/material'
 import type { FormEvent, PropsWithChildren, ReactNode } from 'react'
-import { AuthStepper } from './AuthStepper'
+import { FormStepper } from './FormStepper'
 import { BackButton } from './BackButton'
 import { FormActions } from './FormActions'
 
@@ -70,7 +70,7 @@ export function SteppedFormDialog({
       ) : null}
       <DialogContent>
         <Stack component="form" spacing={3} onSubmit={handleSubmit}>
-          <AuthStepper steps={steps} activeStep={activeStep} />
+          <FormStepper steps={steps} activeStep={activeStep} />
           {children}
           {footer ?? (
             <FormActions>
