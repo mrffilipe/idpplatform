@@ -18,6 +18,7 @@ Consulte o guia completo em **[GETTING_STARTED.md](./GETTING_STARTED.md)** para 
 backend/    API ASP.NET Core 8 — Clean Architecture (Domain / Application / Infrastructure / API)
             Ferramenta auxiliar: tools/GenerateOidcKey (gera chave RSA no diretório da API)
 frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
+samples/    Aplicações consumidoras de referência (ex.: pulse-crm — CRM SaaS + OIDC)
 .github/    Workflows de CI (quando configurados)
 ```
 
@@ -30,6 +31,8 @@ frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
 | [GETTING_STARTED.md](./GETTING_STARTED.md) | Guia passo a passo: configurar, rodar e fazer o bootstrap do zero |
 | [backend/README.md](./backend/README.md) | Arquitetura, configuração, endpoints, migrations e OIDC do backend |
 | [frontend/README.md](./frontend/README.md) | Stack, variáveis de ambiente, fluxo OIDC e páginas do frontend |
+| [samples/README.md](./samples/README.md) | Samples consumidores e checklist de OAuth no painel |
+| [samples/pulse-crm/README.md](./samples/pulse-crm/README.md) | PulseCRM: como rodar e testar integração OIDC |
 
 ---
 

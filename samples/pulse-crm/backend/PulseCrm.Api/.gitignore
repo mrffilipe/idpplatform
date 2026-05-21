@@ -1,0 +1,6 @@
+pulsecrm.dev.db
+pulsecrm.dev.db-shm
+pulsecrm.dev.db-wal
+pulsecrm.db
+bin/
+obj/
