@@ -1,6 +1,7 @@
 import type { AuthTenantSummary } from '../types'
 import type { OidcTokenResponse, TenantContextResult } from '../types/oidc'
 import { tryParseJwtPayload } from './jwt'
+import { tokenExpiresAtIso } from './oidcToken'
 
 const SESSION_STORAGE_KEY = 'idp.auth.session'
 
@@ -75,7 +76,7 @@ export function saveSessionFromOidcTokens(
   const session: AuthSessionStorage = {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
-    expiresAtIso: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+    expiresAtIso: tokenExpiresAtIso(tokens.expires_in),
     userId: String(claims?.uid ?? claims?.sub ?? ''),
     email: String(claims?.email ?? ''),
     tenantId: claims?.tid ? String(claims.tid) : null,
@@ -133,7 +134,7 @@ export function updateSessionFromOidcRefresh(tokens: OidcTokenResponse): AuthSes
   const updated: AuthSessionStorage = {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
-    expiresAtIso: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+    expiresAtIso: tokenExpiresAtIso(tokens.expires_in),
     userId: String(claims?.uid ?? claims?.sub ?? current?.userId ?? ''),
     email: String(claims?.email ?? current?.email ?? ''),
     tenantId: claims?.tid ? String(claims.tid) : current?.tenantId ?? null,

@@ -13,7 +13,7 @@ public static class PlatformDefaults
         public const string ClientId = "platform-admin-web";
 
         public static readonly IReadOnlyList<string> AllowedScopes =
-            ["openid", "profile", "email"];
+            ["openid", "profile", "email", "offline_access"];
 
         public static readonly IReadOnlyList<string> DefaultRedirectUris =
             ["http://localhost:3000/auth/callback"];

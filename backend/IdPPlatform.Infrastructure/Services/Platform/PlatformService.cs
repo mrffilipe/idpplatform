@@ -7,6 +7,7 @@ using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Exceptions;
 using IdPPlatform.Domain.Repositories;
 using IdPPlatform.Domain.ValueObjects;
+using IdPPlatform.Application.Services.Oidc;
 using IdPPlatform.Infrastructure.Configurations;
 using IdPPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -196,11 +197,44 @@ public sealed class PlatformService : IPlatformService
             .FirstOrDefaultAsync(cancellationToken);
 
         var isConfigured = configuration?.IsBootstrapped == true && configuration.RootUserId.HasValue;
+
+        if (isConfigured)
+        {
+            await EnsureAdminConsoleOfflineAccessScopeAsync(cancellationToken);
+        }
+
         return new PlatformStatusResult
         {
             IsConfigured = isConfigured,
             RequiresBootstrap = !isConfigured,
             OauthClientId = isConfigured ? configuration?.OauthClientId : null
         };
+    }
+
+    /// <summary>
+    /// Instalações bootstrapped antes de <c>offline_access</c> no admin console precisam do scope para refresh tokens (SPA).
+    /// </summary>
+    private async Task EnsureAdminConsoleOfflineAccessScopeAsync(CancellationToken cancellationToken)
+    {
+        var client = await _clients.GetByClientIdAsync(PlatformDefaults.AdminConsole.ClientId, cancellationToken);
+        if (client is null || !client.IsSystem)
+        {
+            return;
+        }
+
+        var scopes = JsonSerializer.Deserialize<List<string>>(client.AllowedScopes) ?? [];
+        if (scopes.Contains(OidcConstants.Scopes.OfflineAccess, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        scopes.Add(OidcConstants.Scopes.OfflineAccess);
+        var updatedScopes = JsonSerializer.Serialize(scopes);
+
+        await _context.ApplicationClients
+            .Where(c => c.Id == client.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(c => c.AllowedScopes, updatedScopes),
+                cancellationToken);
     }
 }

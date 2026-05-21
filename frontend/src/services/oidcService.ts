@@ -1,6 +1,7 @@
 import { env } from '../config'
 import type { OidcTokenResponse } from '../types/oidc'
 import { apiPaths } from './httpPaths'
+import { normalizeOidcTokenResponse } from '../utils/oidcToken'
 import { generatePkcePair } from '../utils/pkce'
 
 const OIDC_SCOPES = 'openid profile email offline_access'
@@ -94,7 +95,7 @@ export async function redeemAuthorizationCode(code: string, codeVerifier: string
     throw new Error(text || `Falha ao trocar authorization code (${response.status}).`)
   }
 
-  return (await response.json()) as OidcTokenResponse
+  return normalizeOidcTokenResponse(await response.json())
 }
 
 export async function refreshOidcTokens(refreshToken: string): Promise<OidcTokenResponse> {
@@ -115,7 +116,7 @@ export async function refreshOidcTokens(refreshToken: string): Promise<OidcToken
     throw new Error(text || `Falha ao renovar token (${response.status}).`)
   }
 
-  return (await response.json()) as OidcTokenResponse
+  return normalizeOidcTokenResponse(await response.json())
 }
 
 export function buildLogoutUrl(postLogoutRedirectUri?: string): string {
