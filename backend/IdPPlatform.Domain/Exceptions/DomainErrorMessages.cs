@@ -100,6 +100,7 @@ public static class DomainErrorMessages
     public static class AuthSession
     {
         public const string UserIdRequired = "UserId is required.";
+        public const string ClientIdRequired = "OAuth client id is required.";
         public const string TenantContextInvalid = "Tenant context is invalid.";
         public const string SessionNotFound = "Session not found.";
     }

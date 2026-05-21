@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { completeOnboarding } from '../services/crmApi'
-import { refreshTokens } from '../services/idpOidc'
-import { clearOnboardingDraft, getOnboardingDraft, getSession, updateAccessToken } from '../utils/authStorage'
+import { refreshAccessTokenWithTenant } from '../services/idpOidc'
+import { clearOnboardingDraft, getOnboardingDraft, updateAccessToken } from '../utils/authStorage'
+import { normalizeOidcTokenResponse } from '../utils/oidcToken'
 import { PLANS } from '../types/crm'
 
 export function PaymentPage() {
@@ -11,8 +12,13 @@ export function PaymentPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!getOnboardingDraft()) {
+      navigate('/onboarding', { replace: true })
+    }
+  }, [navigate])
+
   if (!draft) {
-    navigate('/onboarding', { replace: true })
     return null
   }
 
@@ -29,12 +35,17 @@ export function PaymentPage() {
         paymentReference: `pay_mock_${Date.now()}`,
       })
 
-      if (result.requiresTokenRefresh) {
-        const session = getSession()
-        if (session?.refreshToken) {
-          const tokens = await refreshTokens(session.refreshToken)
-          updateAccessToken(tokens)
-        }
+      if (result.tokens?.access_token) {
+        updateAccessToken(
+          normalizeOidcTokenResponse({
+            access_token: result.tokens.access_token,
+            refresh_token: result.tokens.refresh_token,
+            expires_in: result.tokens.expires_in,
+            token_type: result.tokens.token_type,
+          }),
+        )
+      } else {
+        await refreshAccessTokenWithTenant()
       }
 
       clearOnboardingDraft()

@@ -1,11 +1,16 @@
 using System.Security.Claims;
 using System.Text.Json;
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
+using IdPPlatform.Application.Services.Auth;
 using IdPPlatform.Application.Services.LocalAuthentication;
+using LocalLoginResult = IdPPlatform.Application.Services.LocalAuthentication.LocalLoginResult;
 using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Entities;
+using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Repositories;
 using IdPPlatform.Infrastructure.Configurations;
+using IdPPlatform.Infrastructure.Services.ExternalIdentityProvider;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -18,30 +23,33 @@ namespace IdPPlatform.API.Controllers;
 public sealed class AccountController : Controller
 {
     private readonly ILocalAuthenticationService _localAuth;
-    private readonly IApplicationClientRepository _clients;
+    private readonly IExternalLoginService _externalLogin;
+    private readonly IIdentityProviderRepository _identityProviders;
     private readonly IAuthSessionRepository _sessions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtOptions _jwtOptions;
 
     public AccountController(
         ILocalAuthenticationService localAuth,
-        IApplicationClientRepository clients,
+        IExternalLoginService externalLogin,
+        IIdentityProviderRepository identityProviders,
         IAuthSessionRepository sessions,
         IUnitOfWork unitOfWork,
         IOptions<JwtOptions> jwtOptions)
     {
         _localAuth = localAuth;
-        _clients = clients;
+        _externalLogin = externalLogin;
+        _identityProviders = identityProviders;
         _sessions = sessions;
         _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
     }
 
     [HttpGet("/account/login")]
-    public IActionResult Login([FromQuery] string? returnUrl = null)
+    public async Task<IActionResult> Login([FromQuery] string? returnUrl, CancellationToken cancellationToken)
     {
-        ViewData["ReturnUrl"] = returnUrl;
-        return View();
+        var model = await BuildLoginViewModelAsync(returnUrl, cancellationToken);
+        return View(model);
     }
 
     [HttpPost("/account/login")]
@@ -55,8 +63,7 @@ public sealed class AccountController : Controller
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
             ModelState.AddModelError(string.Empty, "Email e senha são obrigatórios.");
-            ViewData["ReturnUrl"] = returnUrl;
-            return View();
+            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
         }
 
         var login = await _localAuth.LoginAsync(
@@ -66,10 +73,55 @@ public sealed class AccountController : Controller
         if (login is null)
         {
             ModelState.AddModelError(string.Empty, "Email ou senha inválidos.");
-            ViewData["ReturnUrl"] = returnUrl;
-            return View();
+            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
         }
 
+        return await CompleteLoginAsync(login.ToExternalLoginResult(), returnUrl, cancellationToken);
+    }
+
+    [HttpPost("/account/external-login")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExternalLogin(
+        [FromForm] string providerAlias,
+        [FromForm] string idToken,
+        [FromForm] string? returnUrl,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(providerAlias) || string.IsNullOrWhiteSpace(idToken))
+        {
+            ModelState.AddModelError(string.Empty, "Provedor ou token inválido.");
+            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+        }
+
+        try
+        {
+            var login = await _externalLogin.LoginWithProviderAsync(providerAlias, idToken, cancellationToken);
+            return await CompleteLoginAsync(login, returnUrl, cancellationToken);
+        }
+        catch (Exception ex) when (ex is Domain.Exceptions.DomainBusinessRuleException
+            or Domain.Exceptions.DomainNotFoundException
+            or Application.Exceptions.UnauthorizedApplicationException
+            or Domain.Exceptions.DomainValidationException)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+        }
+    }
+
+    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+    [HttpPost("/account/logout")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Redirect("/");
+    }
+
+    private async Task<IActionResult> CompleteLoginAsync(
+        ExternalLoginResult login,
+        string? returnUrl,
+        CancellationToken cancellationToken)
+    {
         var activeMembership = login.TenantMemberships.FirstOrDefault();
         var session = new AuthSession(
             login.UserId,
@@ -85,14 +137,7 @@ public sealed class AccountController : Controller
 
         var context = new OidcLoginContext
         {
-            Login = new Application.Services.Auth.ExternalLoginResult
-            {
-                UserId = login.UserId,
-                Email = login.Email,
-                DisplayName = login.DisplayName,
-                PlatformRoles = login.PlatformRoles,
-                TenantMemberships = login.TenantMemberships
-            },
+            Login = login,
             SessionId = session.Id,
             ActiveTenantId = activeMembership?.TenantId,
             ActiveMembershipId = activeMembership?.MembershipId
@@ -121,12 +166,76 @@ public sealed class AccountController : Controller
         return Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
     }
 
-    [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
-    [HttpPost("/account/logout")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    private async Task<AccountLoginViewModel> BuildLoginViewModelAsync(
+        string? returnUrl,
+        CancellationToken cancellationToken)
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Redirect("/");
+        var showLocal = await _identityProviders.AnyEnabledLocalProviderAsync(cancellationToken);
+        var enabled = await _identityProviders.ListEnabledAsync(cancellationToken);
+
+        var federated = enabled
+            .Where(p => p.ProviderType != IdentityProviderType.Local)
+            .Select(MapFederatedProvider)
+            .ToList();
+
+        return new AccountLoginViewModel
+        {
+            ReturnUrl = returnUrl,
+            ShowLocalLogin = showLocal,
+            FederatedProviders = federated
+        };
     }
+
+    private static FederatedProviderViewModel MapFederatedProvider(Domain.Entities.IdentityProvider provider)
+    {
+        IReadOnlyDictionary<string, string>? clientConfig = provider.ProviderType switch
+        {
+            IdentityProviderType.Firebase => BuildFirebaseClientConfig(provider.ConfigJson),
+            _ => null
+        };
+
+        return new FederatedProviderViewModel
+        {
+            Alias = provider.Alias,
+            DisplayName = provider.DisplayName,
+            ProviderType = provider.ProviderType.ToString(),
+            ClientConfig = clientConfig
+        };
+    }
+
+    private static IReadOnlyDictionary<string, string>? BuildFirebaseClientConfig(string? configJson)
+    {
+        try
+        {
+            var config = FirebaseTokenValidator.DeserializeConfig(configJson);
+            if (string.IsNullOrWhiteSpace(config.ProjectId) || string.IsNullOrWhiteSpace(config.WebApiKey))
+            {
+                return null;
+            }
+
+            return new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["projectId"] = config.ProjectId,
+                ["webApiKey"] = config.WebApiKey,
+                ["authDomain"] = config.ResolveAuthDomain()
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+
+internal static class LocalLoginResultExtensions
+{
+    public static ExternalLoginResult ToExternalLoginResult(this LocalLoginResult login) =>
+        new()
+        {
+            UserId = login.UserId,
+            Email = login.Email,
+            DisplayName = login.DisplayName,
+            PlatformRoles = login.PlatformRoles,
+            TenantMemberships = login.TenantMemberships
+        };
 }

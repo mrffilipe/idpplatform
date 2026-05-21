@@ -1,8 +1,9 @@
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
 import { env } from '../config/env'
 import type { Contact, MeResponse, OnboardingCompleteResponse } from '../types/crm'
 import { getSession, updateAccessToken } from '../utils/authStorage'
-import { refreshTokens } from './idpOidc'
+import { jwtHasTenantClaim } from '../utils/jwt'
+import { refreshAccessTokenWithTenant, refreshTokens } from './idpOidc'
 
 export const crmApi = axios.create({
   baseURL: env.crmApiUrl,
@@ -18,12 +19,43 @@ crmApi.interceptors.request.use((config) => {
 })
 
 let refreshPromise: ReturnType<typeof refreshTokens> | null = null
+let tenantRefreshPromise: ReturnType<typeof refreshAccessTokenWithTenant> | null = null
+
+function isMissingTenantError(error: AxiosError): boolean {
+  const message = (error.response?.data as { message?: string } | undefined)?.message
+  return (
+    error.response?.status === 400 &&
+    typeof message === 'string' &&
+    message.toLowerCase().includes('tid')
+  )
+}
 
 crmApi.interceptors.response.use(
   (r) => r,
-  async (error) => {
-    const original = error.config as typeof error.config & { _retry?: boolean }
-    if (!original || error.response?.status !== 401 || original._retry) {
+  async (error: AxiosError) => {
+    const original = error.config as typeof error.config & {
+      _retry?: boolean
+      _tenantRetry?: boolean
+    }
+    if (!original) {
+      return Promise.reject(error)
+    }
+
+    if (isMissingTenantError(error) && !original._tenantRetry) {
+      original._tenantRetry = true
+      try {
+        if (!tenantRefreshPromise) tenantRefreshPromise = refreshAccessTokenWithTenant()
+        const tokens = await tenantRefreshPromise
+        original.headers.Authorization = `Bearer ${tokens.access_token}`
+        return crmApi.request(original)
+      } catch {
+        return Promise.reject(error)
+      } finally {
+        tenantRefreshPromise = null
+      }
+    }
+
+    if (error.response?.status !== 401 || original._retry) {
       return Promise.reject(error)
     }
 
@@ -42,6 +74,22 @@ crmApi.interceptors.response.use(
     }
   },
 )
+
+/** Tenta renovar o token com tid; a API CRM também aceita tenant da assinatura local. */
+export async function ensureTenantAccessToken(): Promise<void> {
+  const session = getSession()
+  if (!session?.accessToken) {
+    throw new Error('Sessão ausente. Faça login novamente.')
+  }
+  if (jwtHasTenantClaim(session.accessToken)) {
+    return
+  }
+  try {
+    await refreshAccessTokenWithTenant()
+  } catch {
+    /* CRM resolve tenantId pela subscription quando o JWT ainda não tem tid */
+  }
+}
 
 export async function getMe(): Promise<MeResponse> {
   const { data } = await crmApi.get<MeResponse>('/api/me')

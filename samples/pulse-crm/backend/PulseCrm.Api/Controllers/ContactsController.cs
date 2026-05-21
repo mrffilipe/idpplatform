@@ -23,10 +23,13 @@ public sealed class ContactsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
-        var tenantId = RequireTenantId();
+        var tenantId = await TenantIdResolver.ResolveAsync(_user, _db, cancellationToken);
         if (tenantId is null)
         {
-            return BadRequest(new { message = "JWT missing tid claim. Refresh token after onboarding." });
+            return BadRequest(new
+            {
+                message = "Tenant não identificado. Conclua o onboarding ou faça login novamente após o pagamento."
+            });
         }
 
         var contacts = await _db.Contacts
@@ -41,10 +44,10 @@ public sealed class ContactsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var tenantId = RequireTenantId();
+        var tenantId = await TenantIdResolver.ResolveAsync(_user, _db, cancellationToken);
         if (tenantId is null)
         {
-            return BadRequest(new { message = "JWT missing tid claim." });
+            return BadRequest(new { message = "Tenant não identificado." });
         }
 
         var contact = await _db.Contacts
@@ -59,10 +62,10 @@ public sealed class ContactsController : ControllerBase
         [FromBody] ContactBody body,
         CancellationToken cancellationToken)
     {
-        var tenantId = RequireTenantId();
+        var tenantId = await TenantIdResolver.ResolveAsync(_user, _db, cancellationToken);
         if (tenantId is null)
         {
-            return BadRequest(new { message = "JWT missing tid claim." });
+            return BadRequest(new { message = "Tenant não identificado." });
         }
 
         if (string.IsNullOrWhiteSpace(body.Name) || string.IsNullOrWhiteSpace(body.Email))
@@ -91,10 +94,10 @@ public sealed class ContactsController : ControllerBase
         [FromBody] ContactBody body,
         CancellationToken cancellationToken)
     {
-        var tenantId = RequireTenantId();
+        var tenantId = await TenantIdResolver.ResolveAsync(_user, _db, cancellationToken);
         if (tenantId is null)
         {
-            return BadRequest(new { message = "JWT missing tid claim." });
+            return BadRequest(new { message = "Tenant não identificado." });
         }
 
         var contact = await _db.Contacts
@@ -120,10 +123,10 @@ public sealed class ContactsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var tenantId = RequireTenantId();
+        var tenantId = await TenantIdResolver.ResolveAsync(_user, _db, cancellationToken);
         if (tenantId is null)
         {
-            return BadRequest(new { message = "JWT missing tid claim." });
+            return BadRequest(new { message = "Tenant não identificado." });
         }
 
         var contact = await _db.Contacts
@@ -138,8 +141,6 @@ public sealed class ContactsController : ControllerBase
         await _db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
-
-    private Guid? RequireTenantId() => _user.TenantId;
 
     public sealed record ContactBody(string Name, string Email, string? Phone);
 }

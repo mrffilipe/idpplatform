@@ -1,9 +1,14 @@
+@model IdPPlatform.API.Models.AccountLoginViewModel
 @{
-    var returnUrl = ViewData["ReturnUrl"] as string;
+    var firebaseProviders = Model.FederatedProviders
+        .Where(p => p.ProviderType == "Firebase" && p.ClientConfig is not null)
+        .ToList();
+    var hasLocal = Model.ShowLocalLogin;
+    var hasFederated = Model.FederatedProviders.Count > 0;
 }
 
 <h1>Entrar</h1>
-<p>Use suas credenciais para continuar.</p>
+<p>Use suas credenciais ou um provedor federado para continuar.</p>
 
 @if (!ViewData.ModelState.IsValid)
 {
@@ -12,19 +17,107 @@
     </div>
 }
 
-<form method="post" asp-action="Login">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="returnUrl" value="@returnUrl" />
+@if (hasLocal)
+{
+    <form method="post" asp-action="Login">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
 
-    <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" autocomplete="username" required />
-    </div>
+        <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="username" required />
+        </div>
 
-    <div>
-        <label for="password">Senha</label>
-        <input type="password" id="password" name="password" autocomplete="current-password" required />
-    </div>
+        <div class="field">
+            <label for="password">Senha</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required />
+        </div>
 
-    <button type="submit">Entrar</button>
-</form>
+        <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+}
+
+@if (hasLocal && hasFederated)
+{
+    <div class="divider"><span>ou</span></div>
+}
+
+@if (hasFederated)
+{
+    <form id="external-login-form" method="post" asp-action="ExternalLogin" style="display:none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+        <input type="hidden" name="providerAlias" id="external-provider-alias" />
+        <input type="hidden" name="idToken" id="external-id-token" />
+    </form>
+
+    @foreach (var provider in Model.FederatedProviders)
+    {
+        @if (provider.ProviderType == "Firebase" && provider.ClientConfig is not null)
+        {
+            <button type="button"
+                    class="btn-google firebase-login-btn"
+                    data-alias="@provider.Alias"
+                    data-api-key="@provider.ClientConfig["webApiKey"]"
+                    data-project-id="@provider.ClientConfig["projectId"]"
+                    data-auth-domain="@provider.ClientConfig["authDomain"]">
+                Continuar com Google — @provider.DisplayName
+            </button>
+        }
+        else
+        {
+            <p class="hint">@provider.DisplayName: login ainda não disponível para este tipo de provedor.</p>
+        }
+    }
+}
+
+@if (firebaseProviders.Count > 0)
+{
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script>
+        (function () {
+            const form = document.getElementById('external-login-form');
+            const aliasInput = document.getElementById('external-provider-alias');
+            const tokenInput = document.getElementById('external-id-token');
+
+            document.querySelectorAll('.firebase-login-btn').forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    const alias = btn.getAttribute('data-alias');
+                    const apiKey = btn.getAttribute('data-api-key');
+                    const projectId = btn.getAttribute('data-project-id');
+                    const authDomain = btn.getAttribute('data-auth-domain');
+                    btn.disabled = true;
+
+                    try {
+                        const appName = 'idp-' + alias;
+                        let app;
+                        try {
+                            app = firebase.app(appName);
+                        } catch (_) {
+                            app = firebase.initializeApp({
+                                apiKey: apiKey,
+                                projectId: projectId,
+                                authDomain: authDomain
+                            }, appName);
+                        }
+
+                        const auth = firebase.auth(app);
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        const result = await auth.signInWithPopup(provider);
+                        const idToken = await result.user.getIdToken();
+
+                        aliasInput.value = alias;
+                        tokenInput.value = idToken;
+                        form.submit();
+                    } catch (err) {
+                        console.error(err);
+                        const detail = err && err.message ? err.message : '';
+                        alert('Não foi possível entrar com Google. Verifique Google habilitado no Firebase Console e authDomain no ConfigJson do IdP.' + (detail ? '\n\n' + detail : ''));
+                        btn.disabled = false;
+                    }
+                });
+            });
+        })();
+    </script>
+}

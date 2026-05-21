@@ -212,7 +212,52 @@ Vá em **Applications** → **Nova application**. Após criar, acesse os detalhe
 
 ### Adicionar provedores de identidade externos (opcional)
 
-Como platform admin, acesse **Identity Providers** → **Adicionar IdP**. Suporta Firebase, Amazon Cognito e provedores genéricos. O provedor `local` está sempre ativo.
+Como platform admin, acesse **Identity Providers** → **Adicionar IdP**. O provedor `local` (bootstrap) permanece habilitado para email/senha.
+
+#### Firebase + Google (login federado funcional)
+
+O Firebase oferece **dois JSONs diferentes**. No painel IdP você monta **um terceiro formato** — só estes três campos na raiz:
+
+| Campo | Origem no Firebase Console | Para quê |
+|-------|---------------------------|----------|
+| `projectId` | ⚙️ Configurações do projeto → **Geral** → ID do projeto | Identificar o projeto no login Google |
+| `webApiKey` | Mesma tela → **Chave da API da Web** | SDK Firebase na página `/account/login` (popup Google) |
+| `authDomain` | App Web → `firebaseConfig.authDomain` (ex.: `meu-projeto.firebaseapp.com`) | Obrigatório no SDK; se omitir no JSON, a API usa `{projectId}.firebaseapp.com` |
+| `serviceAccount` | Configurações → **Contas de serviço** → Gerar nova chave privada (arquivo `.json`) | Validar o `idToken` no servidor (Admin SDK) |
+
+**Não cole** o `firebaseConfig` / `google-services.json` do app Web inteiro (objeto com `authDomain`, `storageBucket`, etc.). Se você já tem esse trecho no frontend do seu app, use só para conferir `apiKey` → `webApiKey` e o ID do projeto → `projectId`; o `serviceAccount` vem **somente** do arquivo da conta de serviço baixado.
+
+**Modelo de ConfigJson** (substitua pelos seus valores; o objeto `serviceAccount` é o conteúdo completo do arquivo `*-firebase-adminsdk-*.json`):
+
+```json
+{
+  "projectId": "meu-projeto-firebase",
+  "webApiKey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "authDomain": "meu-projeto-firebase.firebaseapp.com",
+  "serviceAccount": {
+    "type": "service_account",
+    "project_id": "meu-projeto-firebase",
+    "private_key_id": "...",
+    "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+    "client_email": "firebase-adminsdk-xxxxx@meu-projeto-firebase.iam.gserviceaccount.com",
+    "client_id": "...",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token"
+  }
+}
+```
+
+Passos:
+
+1. [Firebase Console](https://console.firebase.google.com/) → **Authentication** → **Sign-in method** → habilitar **Google**.
+2. Baixar a chave da **conta de serviço** (Admin SDK) e anotar **Project ID** + **Web API Key** (Geral).
+3. Painel admin (`http://localhost:3000`) → **Identity Providers** → **Adicionar IdP** → tipo **Firebase**, alias ex. `firebase`, cole o JSON acima → **Habilitado**.
+4. Manter IdP `local` habilitado (bootstrap).
+5. Teste: qualquer app OIDC (admin ou Pulse CRM) → redirect → `http://localhost:5000/account/login` → **Continuar com Google**.
+
+**Pulse CRM com Google:** o CRM não integra Firebase diretamente; ele redireciona para o OIDC da plataforma. Com o IdP Firebase habilitado, em `/account/login` o usuário entra com Google, volta ao CRM com `code`, faz onboarding/subscribe e usa a API normalmente. Ver `samples/pulse-crm/backend/README.md`.
+
+**Cognito / Genérico:** cadastro com `ConfigJson` válido; login na página `/account/login` ainda não implementado.
 
 ### Integrar uma aplicação consumidora
 

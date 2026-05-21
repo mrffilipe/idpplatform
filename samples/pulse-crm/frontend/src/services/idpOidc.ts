@@ -1,5 +1,7 @@
 import { env } from '../config/env'
 import type { OidcTokenResponse } from '../types/oidc'
+import { getSession, updateAccessToken } from '../utils/authStorage'
+import { jwtHasTenantClaim } from '../utils/jwt'
 import { normalizeOidcTokenResponse } from '../utils/oidcToken'
 import { generatePkcePair } from '../utils/pkce'
 
@@ -78,6 +80,27 @@ export async function exchangeCode(code: string, verifier: string): Promise<Oidc
   }
 
   return normalizeOidcTokenResponse(await res.json())
+}
+
+/** Renova o access token após subscribe/onboarding para incluir claims tid e mid. */
+export async function refreshAccessTokenWithTenant(): Promise<OidcTokenResponse> {
+  const session = getSession()
+  if (!session?.refreshToken) {
+    throw new Error(
+      'Refresh token ausente. No painel IdP, o client pulse-crm-web precisa do scope offline_access e um novo login.',
+    )
+  }
+
+  const tokens = await refreshTokens(session.refreshToken)
+  updateAccessToken(tokens)
+
+  if (!jwtHasTenantClaim(tokens.access_token)) {
+    throw new Error(
+      'O token ainda não contém tid. Conclua o pagamento/onboarding ou saia e entre de novo no Pulse CRM.',
+    )
+  }
+
+  return tokens
 }
 
 export async function refreshTokens(refreshToken: string): Promise<OidcTokenResponse> {

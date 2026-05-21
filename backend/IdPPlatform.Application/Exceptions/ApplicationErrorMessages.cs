@@ -57,5 +57,10 @@ public static class ApplicationErrorMessages
         public const string NotFound = "Identity provider not found.";
         public const string AliasAlreadyExists = "Identity provider alias already exists.";
         public const string CannotDisableLastLocalProvider = "Cannot disable the only active local identity provider.";
+        public const string Disabled = "Identity provider is disabled.";
+        public const string LocalNotAllowedForExternalLogin = "Local identity provider cannot be used for external login.";
+        public const string ConfigInvalid = "Identity provider configuration is invalid.";
+        public const string ConfigRequired = "Identity provider configuration (ConfigJson) is required for this provider type.";
+        public const string LoginTypeNotSupported = "Login is not yet supported for this identity provider type.";
     }
 }

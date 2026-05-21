@@ -57,15 +57,24 @@ public sealed class OnboardingController : ControllerBase
         var tenantKey = SlugHelper.ToTenantKey(body.CompanyName);
         var externalCustomerId = body.PaymentReference ?? $"pay_mock_{Guid.NewGuid():N}"[..24];
 
-        var idpResult = await _idp.SubscribeAsync(
-            accessToken,
-            new SubscribeTenantRequest(
-                body.CompanyName.Trim(),
-                tenantKey,
-                body.PlanCode.Trim().ToLowerInvariant(),
-                externalCustomerId),
-            cancellationToken);
+        IdPSubscribeResult idpSubscribe;
+        try
+        {
+            idpSubscribe = await _idp.SubscribeAsync(
+                accessToken,
+                new SubscribeTenantRequest(
+                    body.CompanyName.Trim(),
+                    tenantKey,
+                    body.PlanCode.Trim().ToLowerInvariant(),
+                    externalCustomerId),
+                cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(502, new { message = ex.Message });
+        }
 
+        var idpResult = idpSubscribe.Context;
         if (idpResult.TenantId is null || idpResult.MembershipId is null)
         {
             return StatusCode(502, new { message = "IdP subscribe did not return tenant context. Refresh token and retry." });
@@ -91,8 +100,19 @@ public sealed class OnboardingController : ControllerBase
         {
             subscription,
             idpTenantContext = idpResult,
-            requiresTokenRefresh = true,
-            message = "Onboarding complete. Refresh OIDC tokens to receive tid/mid claims."
+            tokens = idpSubscribe.Tokens is null
+                ? null
+                : new
+                {
+                    access_token = idpSubscribe.Tokens.AccessToken,
+                    refresh_token = idpSubscribe.Tokens.RefreshToken,
+                    expires_in = idpSubscribe.Tokens.ExpiresIn,
+                    token_type = idpSubscribe.Tokens.TokenType
+                },
+            requiresTokenRefresh = idpSubscribe.Tokens is null,
+            message = idpSubscribe.Tokens is null
+                ? "Onboarding complete. Refresh OIDC tokens to receive tid/mid claims."
+                : "Onboarding complete. Session tokens include tid/mid."
         });
     }
 

@@ -1,7 +1,10 @@
+using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Application.Services.Auth;
-using IdPPlatform.Application.Services.ExternalIdentityProvider;
+using IdPPlatform.Application.Services.IdentityProvider;
 using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Entities;
+using IdPPlatform.Domain.Enums;
+using IdPPlatform.Domain.Exceptions;
 using IdPPlatform.Domain.Repositories;
 using IdPPlatform.Domain.ValueObjects;
 
@@ -9,7 +12,8 @@ namespace IdPPlatform.Infrastructure.Services.Auth;
 
 public sealed class ExternalLoginService : IExternalLoginService
 {
-    private readonly IExternalIdentityProvider _externalIdentityProvider;
+    private readonly IIdentityProviderRepository _identityProviders;
+    private readonly IIdentityProviderTokenValidatorFactory _validatorFactory;
     private readonly IUserRepository _users;
     private readonly IExternalIdentityRepository _externalIdentities;
     private readonly ITenantMembershipRepository _memberships;
@@ -17,14 +21,16 @@ public sealed class ExternalLoginService : IExternalLoginService
     private readonly IUnitOfWork _unitOfWork;
 
     public ExternalLoginService(
-        IExternalIdentityProvider externalIdentityProvider,
+        IIdentityProviderRepository identityProviders,
+        IIdentityProviderTokenValidatorFactory validatorFactory,
         IUserRepository users,
         IExternalIdentityRepository externalIdentities,
         ITenantMembershipRepository memberships,
         IUserPlatformRoleRepository userPlatformRoles,
         IUnitOfWork unitOfWork)
     {
-        _externalIdentityProvider = externalIdentityProvider;
+        _identityProviders = identityProviders;
+        _validatorFactory = validatorFactory;
         _users = users;
         _externalIdentities = externalIdentities;
         _memberships = memberships;
@@ -32,16 +38,27 @@ public sealed class ExternalLoginService : IExternalLoginService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ExternalLoginResult> LoginWithIdentityTokenAsync(
+    public async Task<ExternalLoginResult> LoginWithProviderAsync(
+        string providerAlias,
         string identityToken,
         CancellationToken cancellationToken = default)
     {
-        var externalAuth = await _externalIdentityProvider.ValidateAsync(identityToken, cancellationToken);
+        var provider = await _identityProviders.GetEnabledByAliasAsync(providerAlias, cancellationToken)
+            ?? throw new DomainNotFoundException(ApplicationErrorMessages.IdentityProvider.NotFound);
+
+        if (provider.ProviderType == IdentityProviderType.Local)
+        {
+            throw new DomainBusinessRuleException(
+                ApplicationErrorMessages.IdentityProvider.LocalNotAllowedForExternalLogin);
+        }
+
+        var validator = _validatorFactory.GetValidator(provider.ProviderType);
+        var externalAuth = await validator.ValidateAsync(provider, identityToken, cancellationToken);
 
         var user = await _users.GetByEmailAsync(externalAuth.Email, cancellationToken);
         if (user is null)
         {
-            user = new Domain.Entities.User(
+            user = new User(
                 new EmailAddress(externalAuth.Email),
                 externalAuth.Email.Split('@')[0]);
             await _users.AddAsync(user, cancellationToken);
@@ -54,7 +71,7 @@ public sealed class ExternalLoginService : IExternalLoginService
 
         if (linkedIdentity is null)
         {
-            linkedIdentity = new Domain.Entities.ExternalIdentity(
+            linkedIdentity = new ExternalIdentity(
                 user.Id,
                 externalAuth.Provider,
                 externalAuth.ProviderUserId,

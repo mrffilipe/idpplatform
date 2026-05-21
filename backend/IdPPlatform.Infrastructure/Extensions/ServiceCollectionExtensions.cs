@@ -76,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddRepositories();
         services.AddAggregateServices();
         services.AddServices();
+        services.AddIdentityProviderFederation();
 
         return services;
     }

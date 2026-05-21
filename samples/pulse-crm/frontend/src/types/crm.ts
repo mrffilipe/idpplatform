@@ -15,6 +15,8 @@ export interface MeResponse {
   email?: string
   tenantId?: string | null
   membershipId?: string | null
+  jwtTenantId?: string | null
+  jwtMembershipId?: string | null
   tenantRoles: string[]
   platformRoles: string[]
   claims: Record<string, string>
@@ -31,8 +33,16 @@ export interface Contact {
   createdAt: string
 }
 
+export interface OnboardingTokenPayload {
+  access_token: string
+  refresh_token?: string | null
+  expires_in: number
+  token_type: string
+}
+
 export interface OnboardingCompleteResponse {
   subscription: Subscription
+  tokens?: OnboardingTokenPayload | null
   requiresTokenRefresh: boolean
   message: string
 }

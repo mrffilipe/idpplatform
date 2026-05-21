@@ -85,6 +85,13 @@ export function DashboardPage() {
 
       <section className="card">
         <h2>Access token (JWT decodificado)</h2>
+        {tokenClaims && !tokenClaims.tid && me?.subscription?.tenantId && (
+          <p className="error">
+            O JWT ainda não tem <code>tid</code>, mas a assinatura local tem tenant{' '}
+            <code>{me.subscription.tenantId}</code>. Contatos usam o tenant da assinatura; para o claim no token,
+            refaça o pagamento mock ou saia e entre de novo.
+          </p>
+        )}
         <pre>{JSON.stringify(tokenClaims, null, 2)}</pre>
       </section>
 

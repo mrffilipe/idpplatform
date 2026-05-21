@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { createContact, deleteContact, listContacts, updateContact } from '../services/crmApi'
+import { createContact, deleteContact, ensureTenantAccessToken, listContacts, updateContact } from '../services/crmApi'
 import type { Contact } from '../types/crm'
 
 export function ContactsPage() {
@@ -12,10 +12,11 @@ export function ContactsPage() {
 
   async function load() {
     try {
+      await ensureTenantAccessToken()
       setContacts(await listContacts())
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load contacts')
+      setError(formatCrmError(e))
     }
   }
 
@@ -48,7 +49,7 @@ export function ContactsPage() {
       openCreate()
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(formatCrmError(err))
     }
   }
 
@@ -58,8 +59,16 @@ export function ContactsPage() {
       await deleteContact(id)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      setError(formatCrmError(err))
     }
+  }
+
+  function formatCrmError(err: unknown): string {
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+      const data = (err as { response?: { data?: { message?: string } } }).response?.data
+      if (data?.message) return data.message
+    }
+    return err instanceof Error ? err.message : 'Falha na operação'
   }
 
   return (

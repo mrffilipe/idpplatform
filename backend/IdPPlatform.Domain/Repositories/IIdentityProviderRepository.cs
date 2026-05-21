@@ -9,6 +9,8 @@ public interface IIdentityProviderRepository
 
     Task<IdentityProvider?> GetByAliasAsync(string alias, CancellationToken cancellationToken = default);
 
+    Task<IdentityProvider?> GetEnabledByAliasAsync(string alias, CancellationToken cancellationToken = default);
+
     Task<IdentityProvider?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<IdentityProvider>> ListEnabledAsync(CancellationToken cancellationToken = default);

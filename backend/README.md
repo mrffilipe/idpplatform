@@ -207,6 +207,23 @@ curl http://localhost:5000/v1.0/platform/status
 | POST | `/v1.0/IdentityProviders/{id}/enable` | JWT + plat_admin | Habilitar |
 | POST | `/v1.0/IdentityProviders/{id}/disable` | JWT + plat_admin | Desabilitar |
 
+#### Identity Providers federados
+
+A configuração de cada IdP externo fica em `ConfigJson` no banco (cadastro via painel). **Não há seção `Firebase` em `appsettings`.**
+
+| Tipo | `ConfigJson` (campos principais) | Login em `/account/login` |
+|------|----------------------------------|---------------------------|
+| `Local` | opcional / vazio | email + senha |
+| `Firebase` | `projectId`, `webApiKey`, `authDomain` (opcional), `serviceAccount` | botão Google (Firebase JS + `POST /account/external-login`) |
+| `Cognito` | `userPoolId`, `region`, `clientId` | cadastro validado; login ainda não implementado |
+| `Generic` | `issuer`, `jwksUri`, `audience` | cadastro validado; login ainda não implementado |
+
+Fluxo OIDC: o painel admin inicia `connect/authorize` → redirect para `/account/login` → métodos exibidos conforme IdPs **habilitados** → cookie de sessão → retorno ao cliente.
+
+**Firebase / Google:** no [Firebase Console](https://console.firebase.google.com/), no mesmo `projectId` do `ConfigJson`, ative **Authentication** e o provedor **Google**. A `serviceAccount` é o JSON da conta de serviço do Firebase Admin (verificação do `idToken` no servidor).
+
+O `ExternalIdentity.Provider` gravado no banco usa o **alias** do registro (ex.: `firebase`), não uma string fixa global.
+
 ### Tenants, Memberships, Applications, Audit Logs
 Ver `frontend/swagger.json` para a lista completa de endpoints.
 

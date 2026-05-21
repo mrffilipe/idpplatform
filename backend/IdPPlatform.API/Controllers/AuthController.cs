@@ -1,5 +1,6 @@
 using IdPPlatform.API.Common;
 using IdPPlatform.Application.Services.Auth;
+using IdPPlatform.Application.Services.Oidc;
 using IdPPlatform.Application.Services.UserScope;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -12,11 +13,16 @@ namespace IdPPlatform.API.Controllers;
 public sealed class AuthController : V1ApiControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IOidcTokenService _tokenService;
     private readonly IUserScope _userScope;
 
-    public AuthController(IAuthService authService, IUserScope userScope)
+    public AuthController(
+        IAuthService authService,
+        IOidcTokenService tokenService,
+        IUserScope userScope)
     {
         _authService = authService;
+        _tokenService = tokenService;
         _userScope = userScope;
     }
 
@@ -35,7 +41,38 @@ public sealed class AuthController : V1ApiControllerBase
                 ExternalCustomerId = body.ExternalCustomerId
             },
             cancellationToken);
-        return Ok(result);
+
+        object? tokens = null;
+        if (_userScope.SessionId.HasValue)
+        {
+            var (tokenResponse, tokenError) = await _tokenService.IssueForSessionAsync(
+                _userScope.SessionId.Value,
+                cancellationToken);
+            if (tokenError is null && tokenResponse is not null)
+            {
+                tokens = new
+                {
+                    access_token = tokenResponse.AccessToken,
+                    refresh_token = tokenResponse.RefreshToken,
+                    expires_in = tokenResponse.ExpiresIn,
+                    token_type = tokenResponse.TokenType,
+                    id_token = tokenResponse.IdToken,
+                    scope = tokenResponse.Scope
+                };
+            }
+        }
+
+        return Ok(new
+        {
+            result.UserId,
+            result.Email,
+            result.TenantId,
+            result.MembershipId,
+            result.TenantRoles,
+            result.PlatformRoles,
+            result.Tenants,
+            tokens
+        });
     }
 
     [Authorize]

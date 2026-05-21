@@ -1,8 +1,6 @@
 using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Application.Services.IdentityProvider;
 using IdPPlatform.Application.Services.UnitOfWork;
-using IdPPlatform.Domain.Constants;
-using IdPPlatform.Domain.Entities;
 using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Exceptions;
 using IdPPlatform.Domain.Repositories;
@@ -12,11 +10,16 @@ namespace IdPPlatform.Infrastructure.Services.IdentityProvider;
 public sealed class IdentityProviderService : IIdentityProviderService
 {
     private readonly IIdentityProviderRepository _identityProviders;
+    private readonly IIdentityProviderConfigValidator _configValidator;
     private readonly IUnitOfWork _unitOfWork;
 
-    public IdentityProviderService(IIdentityProviderRepository identityProviders, IUnitOfWork unitOfWork)
+    public IdentityProviderService(
+        IIdentityProviderRepository identityProviders,
+        IIdentityProviderConfigValidator configValidator,
+        IUnitOfWork unitOfWork)
     {
         _identityProviders = identityProviders;
+        _configValidator = configValidator;
         _unitOfWork = unitOfWork;
     }
 
@@ -26,6 +29,8 @@ public sealed class IdentityProviderService : IIdentityProviderService
         {
             throw new DomainBusinessRuleException(ApplicationErrorMessages.IdentityProvider.AliasAlreadyExists);
         }
+
+        _configValidator.ValidateForSave(request.ProviderType, request.ConfigJson);
 
         var provider = new Domain.Entities.IdentityProvider(
             request.Alias,
@@ -45,7 +50,13 @@ public sealed class IdentityProviderService : IIdentityProviderService
             ?? throw new DomainNotFoundException(ApplicationErrorMessages.IdentityProvider.NotFound);
 
         provider.UpdateDisplayName(request.DisplayName);
-        provider.UpdateConfig(request.ConfigJson);
+
+        if (request.ConfigJson is not null)
+        {
+            _configValidator.ValidateForSave(provider.ProviderType, request.ConfigJson);
+            provider.UpdateConfig(request.ConfigJson);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 

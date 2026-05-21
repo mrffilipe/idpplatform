@@ -20,3 +20,13 @@ public sealed record IdPTenantContextResult(
     IReadOnlyList<string> TenantRoles,
     IReadOnlyList<string> PlatformRoles,
     IReadOnlyList<IdPTenantSummary> Tenants);
+
+public sealed record IdPOidcTokenPayload(
+    string AccessToken,
+    string? RefreshToken,
+    int ExpiresIn,
+    string TokenType);
+
+public sealed record IdPSubscribeResult(
+    IdPTenantContextResult Context,
+    IdPOidcTokenPayload? Tokens);

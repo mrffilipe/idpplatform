@@ -18,6 +18,7 @@ public sealed class OidcTokenService : IOidcTokenService
     private readonly IOidcAuthorizationCodeRepository _authorizationCodes;
     private readonly IOidcRefreshTokenRepository _refreshTokens;
     private readonly IAuthSessionRepository _sessions;
+    private readonly IApplicationClientRepository _clients;
     private readonly IRefreshTokenHasher _hasher;
     private readonly IJwtSigningService _jwtSigning;
     private readonly IUnitOfWork _unitOfWork;
@@ -29,6 +30,7 @@ public sealed class OidcTokenService : IOidcTokenService
         IOidcAuthorizationCodeRepository authorizationCodes,
         IOidcRefreshTokenRepository refreshTokens,
         IAuthSessionRepository sessions,
+        IApplicationClientRepository clients,
         IRefreshTokenHasher hasher,
         IJwtSigningService jwtSigning,
         IUnitOfWork unitOfWork,
@@ -39,10 +41,48 @@ public sealed class OidcTokenService : IOidcTokenService
         _authorizationCodes = authorizationCodes;
         _refreshTokens = refreshTokens;
         _sessions = sessions;
+        _clients = clients;
         _hasher = hasher;
         _jwtSigning = jwtSigning;
         _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
+    }
+
+    public async Task<(OidcTokenResponse? Response, OidcError? Error)> IssueForSessionAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await _sessions.GetForUpdateAsync(sessionId, cancellationToken);
+        if (session is null || session.Status != SessionStatus.Active)
+        {
+            return (null, InvalidGrant("Session is not active."));
+        }
+
+        if (!session.ClientId.HasValue)
+        {
+            return (null, InvalidGrant("Session has no OAuth client. Sign in again from the application."));
+        }
+
+        var client = await _clients.GetByIdAsync(session.ClientId.Value, cancellationToken);
+        if (client is null)
+        {
+            return (null, InvalidGrant("OAuth client not found."));
+        }
+
+        var scopes = DeserializeScopes(client.AllowedScopes);
+        if (scopes.Count == 0)
+        {
+            scopes =
+            [
+                OidcConstants.Scopes.OpenId,
+                OidcConstants.Scopes.Profile,
+                OidcConstants.Scopes.Email,
+                OidcConstants.Scopes.OfflineAccess
+            ];
+        }
+
+        session.Touch();
+        return await IssueTokensAsync(client, sessionId, scopes, nonce: null, cancellationToken);
     }
 
     public async Task<(OidcTokenResponse? Response, OidcError? Error)> ExchangeAsync(

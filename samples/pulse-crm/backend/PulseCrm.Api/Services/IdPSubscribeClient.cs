@@ -8,6 +8,11 @@ namespace PulseCrm.Api.Services;
 
 public sealed class IdPSubscribeClient : IIdPSubscribeClient
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly HttpClient _httpClient;
     private readonly IdPOptions _options;
 
@@ -17,7 +22,7 @@ public sealed class IdPSubscribeClient : IIdPSubscribeClient
         _options = options.Value;
     }
 
-    public async Task<IdPTenantContextResult> SubscribeAsync(
+    public async Task<IdPSubscribeResult> SubscribeAsync(
         string accessToken,
         SubscribeTenantRequest request,
         CancellationToken cancellationToken = default)
@@ -35,15 +40,26 @@ public sealed class IdPSubscribeClient : IIdPSubscribeClient
                 $"IdP subscribe failed ({(int)response.StatusCode}): {body}");
         }
 
-        var result = JsonSerializer.Deserialize<IdPTenantContextResult>(
-            body,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
 
-        if (result is null)
+        var context = JsonSerializer.Deserialize<IdPTenantContextResult>(body, JsonOptions)
+            ?? throw new InvalidOperationException("IdP subscribe returned empty body.");
+
+        IdPOidcTokenPayload? tokens = null;
+        if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Object)
         {
-            throw new InvalidOperationException("IdP subscribe returned empty body.");
+            var access = tokensElement.GetProperty("access_token").GetString();
+            if (!string.IsNullOrWhiteSpace(access))
+            {
+                tokens = new IdPOidcTokenPayload(
+                    access,
+                    tokensElement.TryGetProperty("refresh_token", out var rt) ? rt.GetString() : null,
+                    tokensElement.TryGetProperty("expires_in", out var exp) ? exp.GetInt32() : 900,
+                    tokensElement.TryGetProperty("token_type", out var tt) ? tt.GetString() ?? "Bearer" : "Bearer");
+            }
         }
 
-        return result;
+        return new IdPSubscribeResult(context, tokens);
     }
 }

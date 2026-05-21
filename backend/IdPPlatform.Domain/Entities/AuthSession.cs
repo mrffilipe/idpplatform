@@ -61,5 +61,16 @@ public class AuthSession : BaseEntity
         Touch();
     }
 
+    public void BindOAuthClient(Guid applicationClientId)
+    {
+        if (applicationClientId == Guid.Empty)
+        {
+            throw new DomainValidationException(DomainErrorMessages.AuthSession.ClientIdRequired);
+        }
+
+        ClientId = applicationClientId;
+        Touch();
+    }
+
     public void Revoke() => Status = SessionStatus.Revoked;
 }

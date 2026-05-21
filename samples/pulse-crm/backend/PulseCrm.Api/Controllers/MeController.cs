@@ -32,12 +32,17 @@ public sealed class MeController : ControllerBase
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == _user.UserId, cancellationToken);
 
+        var effectiveTenantId = _user.TenantId ?? subscription?.TenantId;
+        var effectiveMembershipId = _user.MembershipId ?? subscription?.MembershipId;
+
         return Ok(new
         {
             userId = _user.UserId,
             email = _user.Email,
-            tenantId = _user.TenantId,
-            membershipId = _user.MembershipId,
+            tenantId = effectiveTenantId,
+            membershipId = effectiveMembershipId,
+            jwtTenantId = _user.TenantId,
+            jwtMembershipId = _user.MembershipId,
             tenantRoles = _user.TenantRoles,
             platformRoles = _user.PlatformRoles,
             claims = _user.AllClaims,

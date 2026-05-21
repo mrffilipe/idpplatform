@@ -28,6 +28,8 @@ import {
   listIdentityProviders,
   updateIdentityProvider,
 } from '../services'
+import { FirebaseConfigHelp } from '../components/identityProviders/FirebaseConfigHelp'
+import { FIREBASE_IDP_CONFIG_EXAMPLE } from '../content/firebaseIdpConfig'
 import {
   IdentityProviderType,
   type AddIdentityProviderBody,
@@ -45,6 +47,50 @@ const providerTypeOptions: Array<{ label: string; value: IdentityProviderType }>
 
 function providerTypeLabel(type: IdentityProviderType | undefined): string {
   return providerTypeOptions.find((o) => o.value === type)?.label ?? String(type ?? '—')
+}
+
+const CONFIG_SCHEMA_HINTS: Record<IdentityProviderType, string> = {
+  [IdentityProviderType.Local]: 'Local não exige ConfigJson.',
+  [IdentityProviderType.Firebase]:
+    'Monte um JSON com 3 partes: projectId e webApiKey (Configurações do projeto → Geral) + serviceAccount (arquivo .json da conta de serviço Admin SDK). Veja o guia abaixo.',
+  [IdentityProviderType.Cognito]:
+    'Obrigatório: userPoolId, region, clientId. Login via Cognito ainda não está disponível — apenas cadastro para uso futuro.',
+  [IdentityProviderType.Generic]:
+    'Obrigatório: issuer, jwksUri, audience. Login OIDC genérico ainda não está disponível — apenas cadastro para uso futuro.',
+}
+
+const CONFIG_EXAMPLES: Partial<Record<IdentityProviderType, string>> = {
+  [IdentityProviderType.Firebase]: FIREBASE_IDP_CONFIG_EXAMPLE,
+  [IdentityProviderType.Cognito]: `{
+  "userPoolId": "us-east-1_XXXXX",
+  "region": "us-east-1",
+  "clientId": "seu-app-client-id"
+}`,
+  [IdentityProviderType.Generic]: `{
+  "issuer": "https://idp.exemplo.com",
+  "jwksUri": "https://idp.exemplo.com/.well-known/jwks.json",
+  "audience": "sua-audience"
+}`,
+}
+
+function validateConfigJson(type: IdentityProviderType, json: string): string | null {
+  if (type === IdentityProviderType.Local) {
+    return null
+  }
+  const trimmed = json.trim()
+  if (!trimmed) {
+    return 'ConfigJson é obrigatório para este tipo de provedor.'
+  }
+  try {
+    JSON.parse(trimmed)
+    return null
+  } catch {
+    return 'ConfigJson inválido: verifique a sintaxe JSON.'
+  }
+}
+
+function configJsonRequired(type: IdentityProviderType): boolean {
+  return type !== IdentityProviderType.Local
 }
 
 export function IdentityProvidersPage() {
@@ -67,9 +113,23 @@ export function IdentityProvidersPage() {
   const [editDisplayName, setEditDisplayName] = useState('')
   const [editConfigJson, setEditConfigJson] = useState('')
 
+  const [editProviderType, setEditProviderType] = useState<IdentityProviderType>(IdentityProviderType.Firebase)
+
   useEffect(() => {
     void loadProviders()
   }, [])
+
+  useEffect(() => {
+    if (!addOpen) {
+      return
+    }
+    const example = CONFIG_EXAMPLES[providerType]
+    if (example) {
+      setConfigJson(example)
+    } else {
+      setConfigJson('')
+    }
+  }, [providerType, addOpen])
 
   async function loadProviders(): Promise<void> {
     setError(null)
@@ -92,12 +152,18 @@ export function IdentityProvidersPage() {
   function openEditDialog(item: IdentityProviderDto): void {
     setEditId(item.id)
     setEditDisplayName(item.displayName)
+    setEditProviderType(item.providerType)
     setEditConfigJson('')
     setEditOpen(true)
   }
 
   async function handleAdd(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    const configError = validateConfigJson(providerType, configJson)
+    if (configError) {
+      setError(configError)
+      return
+    }
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -121,6 +187,13 @@ export function IdentityProvidersPage() {
 
   async function handleEdit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    if (editConfigJson.trim()) {
+      const configError = validateConfigJson(editProviderType, editConfigJson)
+      if (configError) {
+        setError(configError)
+        return
+      }
+    }
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -253,7 +326,7 @@ export function IdentityProvidersPage() {
                 fullWidth
               />
             </FormGridItem>
-            <FormGridItem>
+            <FormGridItem xs={12}>
               <TextField
                 select
                 label="Tipo"
@@ -268,15 +341,47 @@ export function IdentityProvidersPage() {
                 ))}
               </TextField>
             </FormGridItem>
-            <FormGridItem xs={12} md={12}>
+            {providerType === IdentityProviderType.Firebase && (
+              <FormGridItem xs={12}>
+                <FirebaseConfigHelp />
+              </FormGridItem>
+            )}
+            {providerType !== IdentityProviderType.Firebase && (
+              <FormGridItem xs={12}>
+                <Alert severity="info" sx={{ width: '100%' }}>
+                  {CONFIG_SCHEMA_HINTS[providerType]}
+                </Alert>
+              </FormGridItem>
+            )}
+            {(providerType === IdentityProviderType.Cognito ||
+              providerType === IdentityProviderType.Generic) && (
+              <FormGridItem xs={12}>
+                <Alert severity="warning" sx={{ width: '100%' }}>
+                  Login ainda não disponível para este tipo; o cadastro prepara o provedor para uso futuro.
+                </Alert>
+              </FormGridItem>
+            )}
+            <FormGridItem xs={12}>
               <TextField
-                label="Configuração (JSON opcional)"
+                label={
+                  providerType === IdentityProviderType.Firebase
+                    ? 'ConfigJson (cole o JSON completo aqui)'
+                    : configJsonRequired(providerType)
+                      ? 'Configuração (JSON)'
+                      : 'Configuração (JSON opcional)'
+                }
                 value={configJson}
                 onChange={(event) => setConfigJson(event.target.value)}
                 fullWidth
                 multiline
-                minRows={3}
-                helperText="JSON livre com configurações específicas do provedor (ex: projectId, region)."
+                minRows={providerType === IdentityProviderType.Firebase ? 14 : 8}
+                required={configJsonRequired(providerType)}
+                helperText={
+                  providerType === IdentityProviderType.Firebase
+                    ? 'Substitua os placeholders do modelo acima pelos valores do seu projeto Firebase.'
+                    : CONFIG_SCHEMA_HINTS[providerType]
+                }
+                slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 } } }}
               />
             </FormGridItem>
           </FormGrid>
@@ -304,15 +409,32 @@ export function IdentityProvidersPage() {
                 fullWidth
               />
             </FormGridItem>
-            <FormGridItem xs={12} md={12}>
+            {editProviderType === IdentityProviderType.Firebase && (
+              <FormGridItem xs={12}>
+                <FirebaseConfigHelp />
+              </FormGridItem>
+            )}
+            {editProviderType !== IdentityProviderType.Firebase && (
+              <FormGridItem xs={12}>
+                <Alert severity="info" sx={{ width: '100%' }}>
+                  {CONFIG_SCHEMA_HINTS[editProviderType]}
+                </Alert>
+              </FormGridItem>
+            )}
+            <FormGridItem xs={12}>
               <TextField
-                label="Configuração (JSON opcional)"
+                label={
+                  editProviderType === IdentityProviderType.Firebase
+                    ? 'ConfigJson (novo valor; vazio = manter atual)'
+                    : 'Configuração (JSON)'
+                }
                 value={editConfigJson}
                 onChange={(event) => setEditConfigJson(event.target.value)}
                 fullWidth
                 multiline
-                minRows={3}
-                helperText="Deixe vazio para manter a configuração atual."
+                minRows={editProviderType === IdentityProviderType.Firebase ? 12 : 6}
+                helperText="Deixe vazio para manter a configuração atual. Se preencher, use JSON válido no formato do guia Firebase."
+                slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 } } }}
               />
             </FormGridItem>
           </FormGrid>

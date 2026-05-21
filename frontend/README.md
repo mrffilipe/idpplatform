@@ -176,6 +176,19 @@ const isPlatformAdmin = platformRoles.includes('plat_admin')
 
 O item de navegação "Identity Providers" e a tela de criação de applications só aparecem para `plat_admin`.
 
+### Identity Providers — schemas `ConfigJson`
+
+A página **Identity Providers** (`IdentityProvidersPage.tsx`) orienta o cadastro por tipo:
+
+| Tipo | Campos no JSON | Observação na UI |
+|------|----------------|------------------|
+| Local | nenhum obrigatório | sem `ConfigJson` |
+| Firebase | `projectId`, `webApiKey`, `serviceAccount` | guia na UI (`FirebaseConfigHelp`): **não** é o `firebaseConfig` do app Web; `serviceAccount` = arquivo `.json` da conta de serviço Admin SDK |
+| Cognito | `userPoolId`, `region`, `clientId` | aviso: login ainda não disponível |
+| Generic | `issuer`, `jwksUri`, `audience` | aviso: login ainda não disponível |
+
+Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend.
+
 ---
 
 ## Swagger / OpenAPI

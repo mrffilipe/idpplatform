@@ -28,6 +28,13 @@ public sealed class IdentityProviderRepository : IIdentityProviderRepository
             .FirstOrDefaultAsync(x => x.Alias == normalized, cancellationToken);
     }
 
+    public Task<IdentityProvider?> GetEnabledByAliasAsync(string alias, CancellationToken cancellationToken = default)
+    {
+        var normalized = alias.Trim().ToLowerInvariant();
+        return _context.IdentityProviders
+            .FirstOrDefaultAsync(x => x.Alias == normalized && x.Enabled, cancellationToken);
+    }
+
     public Task<IdentityProvider?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return _context.IdentityProviders

@@ -14,3 +14,13 @@ export function parseJwtPayload(token: string): Record<string, unknown> {
 
   return JSON.parse(json) as Record<string, unknown>
 }
+
+export function jwtHasTenantClaim(token: string): boolean {
+  try {
+    const payload = parseJwtPayload(token)
+    const tid = payload.tid
+    return typeof tid === 'string' && tid.length > 0
+  } catch {
+    return false
+  }
+}

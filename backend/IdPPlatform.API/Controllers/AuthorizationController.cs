@@ -3,6 +3,7 @@ using System.Text.Json;
 using IdPPlatform.API.Common;
 using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Application.Services.Oidc;
+using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Repositories;
 using Microsoft.AspNetCore.Authentication;
@@ -16,6 +17,7 @@ namespace IdPPlatform.API.Controllers;
 public sealed class AuthorizationController : Controller
 {
     private readonly IAuthSessionRepository _sessions;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IOidcClientValidator _clientValidator;
     private readonly IOidcAuthorizationService _authorizationService;
     private readonly IOidcTokenService _tokenService;
@@ -23,12 +25,14 @@ public sealed class AuthorizationController : Controller
 
     public AuthorizationController(
         IAuthSessionRepository sessions,
+        IUnitOfWork unitOfWork,
         IOidcClientValidator clientValidator,
         IOidcAuthorizationService authorizationService,
         IOidcTokenService tokenService,
         IOidcClaimsService claimsService)
     {
         _sessions = sessions;
+        _unitOfWork = unitOfWork;
         _clientValidator = clientValidator;
         _authorizationService = authorizationService;
         _tokenService = tokenService;
@@ -104,6 +108,12 @@ public sealed class AuthorizationController : Controller
                 Error = OidcConstants.Errors.LoginRequired,
                 ErrorDescription = "Session is no longer active."
             });
+        }
+
+        if (!session.ClientId.HasValue)
+        {
+            session.BindOAuthClient(client!.Id);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         var claims = await _claimsService.TryBuildClaimsAsync(session.Id, scopes, cancellationToken);
