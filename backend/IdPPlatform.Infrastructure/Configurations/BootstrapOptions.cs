@@ -5,23 +5,21 @@ public sealed class BootstrapOptions
     public const string Section = "Bootstrap";
 
     /// <summary>
-    /// Nome da variável de ambiente que define o email do admin raiz.
-    /// Alternativa: definir <c>Bootstrap:AdminEmail</c> no appsettings (sobrescrito pela env var se ambos presentes).
+    /// Variável de ambiente (Docker / .env): mapeia para <c>Bootstrap:AdminEmail</c>.
+    /// Em appsettings JSON use a seção aninhada <c>Bootstrap</c> com <c>AdminEmail</c>.
     /// </summary>
-    public const string AdminEmailEnvVar = "PLATFORM_BOOTSTRAP_ADMIN_EMAIL";
+    public const string AdminEmailEnvVar = "Bootstrap__AdminEmail";
 
     /// <summary>
-    /// Nome da variável de ambiente que define a senha do admin raiz.
-    /// Recomendado usar apenas via env var em produção; nunca persistir em texto no appsettings de produção.
-    /// Alternativa para desenvolvimento local: definir <c>Bootstrap:AdminPassword</c> no appsettings.Development.json.
+    /// Variável de ambiente (Docker / .env): mapeia para <c>Bootstrap:AdminPassword</c>.
+    /// Recomendado usar apenas via env var em produção; nunca commitar senha real no appsettings.
     /// </summary>
-    public const string AdminPasswordEnvVar = "PLATFORM_BOOTSTRAP_ADMIN_PASSWORD";
+    public const string AdminPasswordEnvVar = "Bootstrap__AdminPassword";
 
     /// <summary>
-    /// Nome da variável de ambiente que define o display name do admin raiz (opcional).
-    /// Alternativa: definir <c>Bootstrap:AdminDisplayName</c> no appsettings.
+    /// Variável de ambiente (Docker / .env): mapeia para <c>Bootstrap:AdminDisplayName</c> (opcional).
     /// </summary>
-    public const string AdminDisplayNameEnvVar = "PLATFORM_BOOTSTRAP_ADMIN_DISPLAY_NAME";
+    public const string AdminDisplayNameEnvVar = "Bootstrap__AdminDisplayName";
 
     public string? AdminEmail { get; set; }
 

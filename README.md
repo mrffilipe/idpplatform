@@ -15,10 +15,10 @@ Consulte o guia completo em **[GETTING_STARTED.md](./GETTING_STARTED.md)** para 
 ## Estrutura do repositório
 
 ```
-backend/          API ASP.NET Core 8 — Clean Architecture (Domain / Application / Infrastructure / API)
-frontend/         Painel admin SPA — React 19 + MUI + React Router 7 + Vite
-sample-consumer/  SPA de referência para apps consumidoras (OIDC + PKCE)
-samples/          Cliente OIDC .NET de referência
+backend/    API ASP.NET Core 8 — Clean Architecture (Domain / Application / Infrastructure / API)
+            Ferramenta auxiliar: tools/GenerateOidcKey (gera chave RSA no diretório da API)
+frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
+.github/    Workflows de CI (quando configurados)
 ```
 
 ---

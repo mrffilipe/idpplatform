@@ -41,28 +41,7 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(RedisOptions.Section));
 
         services.AddOptions<BootstrapOptions>()
-            .Configure<IConfiguration>((options, config) =>
-            {
-                config.GetSection(BootstrapOptions.Section).Bind(options);
-
-                var envEmail = Environment.GetEnvironmentVariable(BootstrapOptions.AdminEmailEnvVar);
-                if (!string.IsNullOrWhiteSpace(envEmail))
-                {
-                    options.AdminEmail = envEmail;
-                }
-
-                var envPassword = Environment.GetEnvironmentVariable(BootstrapOptions.AdminPasswordEnvVar);
-                if (!string.IsNullOrWhiteSpace(envPassword))
-                {
-                    options.AdminPassword = envPassword;
-                }
-
-                var envDisplayName = Environment.GetEnvironmentVariable(BootstrapOptions.AdminDisplayNameEnvVar);
-                if (!string.IsNullOrWhiteSpace(envDisplayName))
-                {
-                    options.AdminDisplayName = envDisplayName;
-                }
-            });
+            .Bind(configuration.GetSection(BootstrapOptions.Section));
 
         services.AddHttpContextAccessor();
         services.AddDistributedCaching(configuration);

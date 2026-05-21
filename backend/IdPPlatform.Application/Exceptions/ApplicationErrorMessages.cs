@@ -33,7 +33,7 @@ public static class ApplicationErrorMessages
         public const string UserHasNoClientTenantMembership = "User has no active membership for this client tenant.";
         public const string PlatformBootstrapRequired = "Platform bootstrap is required before login.";
         public const string PlatformBootstrapAlreadyCompleted = "Platform bootstrap has already been completed.";
-        public const string PlatformBootstrapAdminCredentialsNotConfigured = "Bootstrap admin credentials are not configured. Set PLATFORM_BOOTSTRAP_ADMIN_EMAIL and PLATFORM_BOOTSTRAP_ADMIN_PASSWORD environment variables.";
+        public const string PlatformBootstrapAdminCredentialsNotConfigured = "Bootstrap admin credentials are not configured. Set Bootstrap__AdminEmail and Bootstrap__AdminPassword environment variables (or Bootstrap:AdminEmail / Bootstrap:AdminPassword in appsettings).";
         public const string PlatformBootstrapApplicationSlugAlreadyExists = "Bootstrap application slug already exists.";
         public const string PlatformBootstrapClientIdAlreadyExists = "Bootstrap OAuth client id already exists.";
         public const string SessionInactive = "Session is not active.";

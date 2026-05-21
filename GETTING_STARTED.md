@@ -60,7 +60,14 @@ As demais seções já têm valores padrão adequados para desenvolvimento local
 
 ### 3.2 Gerar a chave RSA para assinar os JWTs
 
-O OIDC usa RS256 (RSA + SHA-256). Gere uma chave privada:
+O OIDC usa RS256 (RSA + SHA-256). A solução inclui o utilitário **GenerateOidcKey**, que grava a chave diretamente em `IdPPlatform.API/keys/oidc-signing.pem`:
+
+```bash
+cd backend
+dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
+```
+
+Alternativa com OpenSSL:
 
 ```bash
 cd backend/IdPPlatform.API
@@ -86,7 +93,7 @@ Para desenvolvimento, a forma mais simples é editar o appsettings:
 }
 ```
 
-> Em produção, use variáveis de ambiente (`PLATFORM_BOOTSTRAP_ADMIN_EMAIL`, `PLATFORM_BOOTSTRAP_ADMIN_PASSWORD`, `PLATFORM_BOOTSTRAP_ADMIN_DISPLAY_NAME`) e **nunca** coloque credenciais reais no appsettings.
+> Em produção ou Docker, use variáveis de ambiente no formato `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`, `Bootstrap__AdminDisplayName` (o `__` representa o aninhamento JSON) e **nunca** coloque credenciais reais no appsettings commitado.
 
 ### 3.4 Aplicar a migration ao banco
 
@@ -118,44 +125,9 @@ curl http://localhost:5000/v1.0/platform/status
 
 ---
 
-## 4. Executar o bootstrap
+## 4. Configurar e iniciar o frontend
 
-O bootstrap inicializa a plataforma uma única vez. Com a API rodando:
-
-```bash
-curl -X POST http://localhost:5000/v1.0/platform/bootstrap
-```
-
-Resposta de sucesso:
-
-```json
-{
-  "isConfigured": true,
-  "rootUserId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "oauthClientId": "platform-admin-web"
-}
-```
-
-O que o bootstrap cria:
-- Usuário admin com a senha configurada no appsettings/env vars
-- Role de plataforma `plat_admin` atribuída ao admin
-- Identity Provider `local` habilitado
-- Application `platform-admin` + Client OAuth `platform-admin-web` (fixos, não editáveis via API)
-
-Verifique o status após o bootstrap:
-
-```bash
-curl http://localhost:5000/v1.0/platform/status
-# { "isConfigured": true, "requiresBootstrap": false, "oauthClientId": "platform-admin-web" }
-```
-
-> Após o bootstrap bem-sucedido em produção, remova as variáveis de ambiente de credenciais. Elas não têm mais efeito.
-
----
-
-## 5. Configurar e iniciar o frontend
-
-### 5.1 Criar o arquivo .env
+### 4.1 Criar o arquivo .env
 
 ```bash
 cd frontend
@@ -174,7 +146,7 @@ VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
 
 Não é necessário alterar nada para dev local.
 
-### 5.2 Instalar dependências e iniciar
+### 4.2 Instalar dependências e iniciar
 
 ```bash
 cd frontend
@@ -186,9 +158,35 @@ O frontend estará em `http://localhost:3000`.
 
 ---
 
-## 6. Fazer login
+## 5. Executar o bootstrap e fazer login
 
-Acesse `http://localhost:3000`. Você será redirecionado para a tela de login.
+Acesse `http://localhost:3000` (API e frontend rodando).
+
+### Bootstrap (primeira vez)
+
+Se a plataforma ainda não foi inicializada, a tela em `/login` mostra **Inicializar plataforma** em vez do botão de login OIDC. Clique para executar o bootstrap (credenciais lidas do backend — seção `Bootstrap` ou env `Bootstrap__*`).
+
+O bootstrap cria, uma única vez:
+- Usuário admin com a senha configurada no appsettings/env vars
+- Role de plataforma `plat_admin` atribuída ao admin
+- Identity Provider `local` habilitado
+- Application `platform-admin` + Client OAuth `platform-admin-web` (fixos, não editáveis via API)
+
+Após sucesso, a mesma rota passa a exibir o login OIDC.
+
+**Alternativa (ops):** com a API rodando, `curl -X POST http://localhost:5000/v1.0/platform/bootstrap`.
+
+Verifique o status:
+
+```bash
+curl http://localhost:5000/v1.0/platform/status
+# Antes: { "requiresBootstrap": true, ... }
+# Depois: { "isConfigured": true, "requiresBootstrap": false, "oauthClientId": "platform-admin-web" }
+```
+
+> Após o bootstrap bem-sucedido em produção, remova `Bootstrap__*` do ambiente. Elas não têm mais efeito.
+
+### Login
 
 1. Clique em **"Entrar na plataforma"**
 2. Você será redirecionado para `/account/login` no backend
@@ -198,7 +196,7 @@ Acesse `http://localhost:3000`. Você será redirecionado para a tela de login.
 
 ---
 
-## 7. Próximos passos
+## 6. Próximos passos
 
 ### Criar um tenant
 
@@ -218,23 +216,28 @@ Como platform admin, acesse **Identity Providers** → **Adicionar IdP**. Suport
 
 ### Integrar uma aplicação consumidora
 
-Consulte `sample-consumer/` para um exemplo completo de integração OIDC. A discovery URL é `http://localhost:5000/.well-known/openid-configuration`.
+1. Registre uma **Application** e um **Client OAuth** no painel (redirect URIs da sua app).
+2. Use a discovery URL: `http://localhost:5000/.well-known/openid-configuration` (em produção, substitua pelo host público da API).
+3. Implemente authorization code + PKCE no seu cliente (SPA, backend, etc.).
 
 ---
 
-## 8. Configuração para produção
+## 7. Configuração para produção
 
 ### Variáveis de ambiente críticas
 
-| Variável / Chave | Produção |
-|------------------|----------|
-| `Database:ConnectionString` | String de conexão ao banco gerenciado (RDS, Cloud SQL, etc.) |
-| `Jwt:SigningKeyPem` | Conteúdo PEM da chave privada RSA (inline, sem arquivo) |
-| `Jwt:Issuer` | URL pública do backend (ex: `https://auth.meusite.com`) |
-| `PLATFORM_BOOTSTRAP_ADMIN_EMAIL` | Apenas no primeiro deploy; remover após bootstrap |
-| `PLATFORM_BOOTSTRAP_ADMIN_PASSWORD` | Apenas no primeiro deploy; remover após bootstrap |
-| `Email:FromAddress`, `Email:Region`, etc. | Configuração AWS SES para convites |
-| `Redis:ConnectionString` | Cache distribuído (ElastiCache, Redis Cloud, etc.) |
+| Variável de ambiente (`__`) | Produção |
+|-----------------------------|----------|
+| `Database__ConnectionString` | String de conexão ao banco gerenciado (RDS, Cloud SQL, etc.) |
+| `Jwt__SigningKeyPem` | Conteúdo PEM da chave privada RSA (inline, sem arquivo) |
+| `Jwt__Issuer` | URL pública do backend (ex: `https://auth.meusite.com`) |
+| `Bootstrap__AdminEmail` | Apenas no primeiro deploy; remover após bootstrap |
+| `Bootstrap__AdminPassword` | Apenas no primeiro deploy; remover após bootstrap |
+| `Bootstrap__AdminDisplayName` | Opcional no primeiro deploy |
+| `Email__FromAddress`, `Email__Region`, etc. | Configuração AWS SES para convites |
+| `Redis__ConnectionString` | Cache distribuído (ElastiCache, Redis Cloud, etc.) |
+
+No `appsettings.json` de produção, o equivalente usa `:` (ex.: `Database:ConnectionString`).
 | `VITE_API_BASE_URL` | URL pública da API (durante o build do frontend) |
 | `VITE_OAUTH_REDIRECT_URI` | URL pública do callback OIDC do frontend |
 
@@ -253,7 +256,7 @@ Em produção, toda comunicação deve ser via HTTPS. O `Jwt:Issuer` deve usar `
 
 ---
 
-## 9. Referência rápida de comandos
+## 8. Referência rápida de comandos
 
 ```bash
 # Backend: aplicar migrations
@@ -271,19 +274,22 @@ cd frontend && npm run dev
 # Frontend: build
 cd frontend && npm run build
 
-# Bootstrap (com API rodando)
-curl -X POST http://localhost:5000/v1.0/platform/status  # verificar
-curl -X POST http://localhost:5000/v1.0/platform/bootstrap  # executar
+# Chave OIDC (GenerateOidcKey)
+dotnet run --project backend/tools/GenerateOidcKey/GenerateOidcKey.csproj
+
+# Bootstrap (com API rodando) — ou use o botão no frontend em /login
+curl http://localhost:5000/v1.0/platform/status
+curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 ```
 
 ---
 
-## 10. Solução de problemas
+## 9. Solução de problemas
 
 | Problema | Causa provável | Solução |
 |----------|---------------|---------|
 | API não inicia: erro de chave RSA | `keys/oidc-signing.pem` não existe | Gerar com `openssl genpkey` (passo 3.2) |
-| Bootstrap retorna 400 | Credenciais não configuradas no appsettings/env | Verificar seção `Bootstrap` ou env vars |
+| Bootstrap retorna 400 | Credenciais não configuradas no appsettings/env | Verificar seção `Bootstrap` ou `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` |
 | Bootstrap retorna "já bootstrapped" | Bootstrap já foi executado | Ignorar; fazer login normalmente |
 | Frontend não carrega após login | `VITE_OAUTH_REDIRECT_URI` incorreta | Confirmar que o `redirect_uri` bate com o `platform-admin-web` client |
 | JWT expirado / 401 | Token expirado e refresh falhou | Fazer logout e login novamente |

@@ -21,7 +21,8 @@ Painel administrativo (SPA) do IdP Platform. Consome a API via OIDC (authorizati
 
 - Node.js (versão compatível com `package.json`)
 - Backend rodando em `VITE_API_BASE_URL` (ver configuração)
-- Bootstrap da plataforma já executado no backend
+- Credenciais de bootstrap configuradas no backend (`Bootstrap` no appsettings ou `Bootstrap__*` no ambiente)
+- Se a plataforma ainda não foi inicializada, o próprio frontend executa o bootstrap na tela `/login` (botão **Inicializar plataforma**)
 
 ---
 
@@ -61,11 +62,20 @@ npm run preview
 
 ---
 
-## Fluxo de autenticação OIDC
+## Fluxo de bootstrap e autenticação
+
+```
+1. Usuário acessa a aplicação (ex.: / ou /login)
+2. loginLoader / requireAuthLoader consultam GET /v1.0/platform/status
+3. Se requiresBootstrap → /login exibe botão "Inicializar plataforma" → POST /v1.0/platform/bootstrap
+4. Após bootstrap → mesma rota exibe login OIDC
+```
+
+### OIDC (após bootstrap)
 
 ```
 1. Usuário acessa rota protegida
-2. requireAuthLoader verifica localStorage (idp.auth.session)
+2. requireAuthLoader verifica status e localStorage (idp.auth.session)
 3. Se sem sessão → redirect /login?returnUrl=...
 4. LoginPage → redirectToOidcLogin()
 5. Browser navega para GET /connect/authorize (PKCE, state em sessionStorage)
@@ -87,7 +97,7 @@ O logout limpa o `localStorage` e redireciona para `GET /connect/logout`.
 
 | Rota | Componente | Auth | Descrição |
 |------|-----------|------|-----------|
-| `/login` | `LoginPage` | Público | Inicia fluxo OIDC |
+| `/login` | `LoginPage` | Público | Bootstrap (se `requiresBootstrap`) ou inicia fluxo OIDC |
 | `/auth/callback` | `AuthCallbackPage` | Público | Troca código por token |
 | `/` | `HomePage` | JWT | Dashboard com links para módulos |
 | `/profile` | `ProfilePage` | JWT | Perfil e memberships do usuário |
@@ -141,7 +151,7 @@ src/
 
 | Arquivo | Funções |
 |---------|---------|
-| `platformService.ts` | `getPlatformStatus` |
+| `platformService.ts` | `getPlatformStatus`, `bootstrapPlatform` |
 | `authService.ts` | `subscribeTenant`, `switchTenant`, `listSessions`, `revokeSession` |
 | `usersService.ts` | `getMe`, `updateMe`, `listMyMemberships` |
 | `tenantsService.ts` | `createTenant`, `listTenants`, `getTenantById`, `updateTenant`, `inviteMember`, `acceptInvite` |

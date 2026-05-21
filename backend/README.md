@@ -75,29 +75,45 @@ Todas as configurações ficam em `IdPPlatform.API/appsettings.json` (template) 
 | `Email` | `FromAddress`, `Region`, `AccessKeyId`, `SecretAccessKey` | AWS SES para envio de convites |
 | `Redis` | `ConnectionString`, `InstanceName`, `TenantIdentifierCacheMinutes` | Cache distribuído (opcional) |
 
-### Variáveis de ambiente de bootstrap
+### Variáveis de ambiente (Docker / docker-compose / `.env`)
 
-As credenciais do admin raiz são lidas **prioritariamente** de variáveis de ambiente (sobrepõem o appsettings):
+O ASP.NET Core mapeia `Secao__Propriedade` para `Secao:Propriedade` (equivalente ao JSON aninhado). Exemplo para bootstrap:
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `PLATFORM_BOOTSTRAP_ADMIN_EMAIL` | Sim | Email do administrador raiz |
-| `PLATFORM_BOOTSTRAP_ADMIN_PASSWORD` | Sim | Senha inicial (nunca persiste em texto) |
-| `PLATFORM_BOOTSTRAP_ADMIN_DISPLAY_NAME` | Não | Nome de exibição (padrão: parte do email) |
+| `Bootstrap__AdminEmail` | Sim | Email do administrador raiz |
+| `Bootstrap__AdminPassword` | Sim | Senha inicial (nunca persiste em texto) |
+| `Bootstrap__AdminDisplayName` | Não | Nome de exibição (padrão: parte do email) |
 
-> Após o bootstrap, remova essas variáveis de ambiente. Elas só são lidas durante a primeira execução e não afetam o sistema depois.
+Outras chaves comuns: `Database__ConnectionString`, `Jwt__Issuer`, `Jwt__SigningKeyPem`, `Redis__ConnectionString`, `Email__FromAddress`, etc.
+
+Em desenvolvimento local, a seção `Bootstrap` no `appsettings.Development.json` é suficiente.
+
+> Após o bootstrap, remova `Bootstrap__*` do ambiente em produção. Elas só são necessárias na primeira inicialização.
 
 ### Chave RSA para OIDC
 
-O JWT é assinado com RSA (RS256). Gere a chave antes de iniciar:
+O JWT é assinado com RSA (RS256). Gere a chave antes de iniciar.
+
+**Opção recomendada — projeto `GenerateOidcKey` na solução:**
 
 ```bash
 cd backend
-mkdir -p IdPPlatform.API/keys
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out IdPPlatform.API/keys/oidc-signing.pem
+dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
+# Grava IdPPlatform.API/keys/oidc-signing.pem por padrão
 ```
 
-Configure `Jwt:SigningKeyPath` com o caminho do arquivo, ou `Jwt:SigningKeyPem` com o conteúdo PEM inline (útil em containers).
+Caminho customizado: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj -- caminho/para/chave.pem`
+
+**Alternativa com OpenSSL:**
+
+```bash
+cd backend/IdPPlatform.API
+mkdir keys
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
+```
+
+Configure `Jwt:SigningKeyPath` (ou env `Jwt__SigningKeyPath`) com o caminho do arquivo, ou `Jwt:SigningKeyPem` / `Jwt__SigningKeyPem` com o conteúdo PEM inline (útil em containers).
 
 ---
 
@@ -124,13 +140,14 @@ A API sobe em `http://localhost:5000`. Swagger disponível em `/swagger` nos amb
 
 ## Bootstrap
 
-O bootstrap inicializa a plataforma pela primeira vez (executado uma única vez):
+O bootstrap inicializa a plataforma pela primeira vez (executado uma única vez).
+
+**Fluxo recomendado:** com a API e o frontend rodando, acesse `http://localhost:3000`. Se `GET /v1.0/platform/status` indicar `requiresBootstrap: true`, a tela de login exibe o botão **Inicializar plataforma**, que chama `POST /v1.0/platform/bootstrap` (sem body; credenciais vêm só da configuração do backend).
+
+**Alternativa (ops / CI):**
 
 ```bash
-# Com as variáveis de ambiente configuradas, chamar:
 curl -X POST http://localhost:5000/v1.0/platform/bootstrap
-
-# Retorna:
 # { "isConfigured": true, "rootUserId": "...", "oauthClientId": "platform-admin-web" }
 ```
 
