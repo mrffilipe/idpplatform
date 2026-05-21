@@ -1,0 +1,30 @@
+@{
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<h1>Entrar</h1>
+<p>Use suas credenciais para continuar.</p>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="error">
+        @Html.ValidationSummary()
+    </div>
+}
+
+<form method="post" asp-action="Login">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+    <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="username" required />
+    </div>
+
+    <div>
+        <label for="password">Senha</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required />
+    </div>
+
+    <button type="submit">Entrar</button>
+</form>

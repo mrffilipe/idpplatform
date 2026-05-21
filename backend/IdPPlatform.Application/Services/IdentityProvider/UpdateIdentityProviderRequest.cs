@@ -1,0 +1,10 @@
+namespace IdPPlatform.Application.Services.IdentityProvider;
+
+public sealed record UpdateIdentityProviderRequest
+{
+    public required Guid Id { get; init; }
+
+    public required string DisplayName { get; init; }
+
+    public string? ConfigJson { get; init; }
+}
