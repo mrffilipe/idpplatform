@@ -1,73 +1,80 @@
-# React + TypeScript + Vite
+# PulseCRM — Frontend (sample)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[English](./README.md) | [Português](./README.pt-BR.md)
 
-Currently, two official plugins are available:
+Consumer SPA for the Pulse CRM sample. It drives the standard OIDC **authorization code + PKCE** flow against the IdP Platform and calls the CRM API for onboarding, subscription, and contacts.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+> Full end-to-end guide (API + test flow): [../README.md](../README.md)  
+> Coding conventions: [../../../rules/frontend-rules.md](../../../rules/frontend-rules.md) (see §12 — central signup on the IdP).
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+| Technology | Use |
+|------------|-----|
+| React | UI |
+| React Router | Routing |
+| Vite | Dev server and build |
+| TypeScript | Static typing |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Prerequisites
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- IdP Platform running at `http://localhost:5000` (bootstrap completed)
+- Pulse CRM API running at `http://localhost:5100`
+- OAuth client `pulse-crm-web` registered in the admin console (see [../../README.md](../../README.md))
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## Configuration
+
+Built-in defaults in `src/config/env.ts` let you run locally without an `.env` file. To override, copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_IDP_AUTHORITY` | `http://localhost:5000` | IdP issuer / authority |
+| `VITE_IDP_CLIENT_ID` | `pulse-crm-web` | OAuth public client |
+| `VITE_IDP_REDIRECT_URI` | `http://localhost:5173/auth/callback` | OIDC callback |
+| `VITE_IDP_SCOPES` | `openid profile email offline_access` | Requested scopes |
+| `VITE_CRM_API_URL` | `http://localhost:5100` | Pulse CRM API base URL |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Run
+
+```bash
+npm install
+npm run dev    # http://localhost:5173
+npm run build
+npm run preview
 ```
+
+---
+
+## Authentication and signup
+
+This SPA has **no `/register` route** and no local signup form. The login screen only redirects to `/connect/authorize`; sign-in and account creation happen on the IdP domain:
+
+- Existing users: `/account/login`
+- New users: link on the IdP login page to `/account/register` (central signup)
+
+After the first token exchange, users without a `tid` claim are routed to **onboarding** → mock payment → `auth/subscribe` on the platform. See [../README.md#test-flow](../README.md#test-flow).
+
+---
+
+## Main routes
+
+| Path | Purpose |
+|------|---------|
+| `/login` | Start OIDC redirect |
+| `/auth/callback` | Exchange `code` for tokens |
+| `/onboarding` | Plan + company name |
+| `/payment` | Mock checkout → subscribe |
+| `/dashboard` | Post-subscribe home |
+| `/contacts` | Tenant-scoped CRUD |

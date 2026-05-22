@@ -43,7 +43,7 @@ Open http://localhost:5173
 
 ## Test flow
 
-1. **Sign in / Create account** — the SPA redirects to `/connect/authorize`. The IdP login page lets the user sign in OR follow "Create account" to `/account/register`. New users are signed in immediately after registration.
+1. **Sign in / Create account** — the SPA redirects to `/connect/authorize`. The IdP login page lets the user sign in OR follow the link to create an account (`/account/register`). New users are signed in immediately after registration.
 2. **Onboarding** — back in the SPA, the absence of a `tid` claim drives the user to pick a plan (`starter`, `professional`, `enterprise`) and a company name.
 3. **Payment** — mock approved → the CRM API calls `auth/subscribe` on the platform to create Tenant + Membership + ApplicationTenant.
 4. **Token refresh** — the SPA refreshes the token to obtain `tid` / `mid` claims.

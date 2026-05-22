@@ -42,7 +42,9 @@ export function LoginPage() {
           {loading ? 'Redirecionando…' : 'Entrar com IdP Platform'}
         </button>
         <p className="hint">
-          Use uma conta já existente no IdP (ex.: admin do bootstrap). Cadastro público não está neste sample.
+          Você será redirecionado ao IdP Platform para entrar ou criar uma conta. Este sample não possui tela
+          própria de cadastro. Novos usuários seguem para o onboarding após o primeiro login (claim{' '}
+          <code>tid</code> ausente).
         </p>
       </div>
     </div>

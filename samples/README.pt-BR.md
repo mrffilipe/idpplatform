@@ -29,4 +29,6 @@ Em **Clients** da application:
 
 Os mesmos valores estão em [`pulse-crm/frontend/.env.example`](./pulse-crm/frontend/.env.example).
 
+**Conta de usuário:** use o admin do bootstrap, um usuário convidado ou crie uma nova conta no IdP durante o redirect OIDC (cadastro central em `/account/register` — o sample não tem tela própria de cadastro). Ver o [fluxo de teste do Pulse CRM](./pulse-crm/README.pt-BR.md#fluxo-de-teste).
+
 Guia completo: [pulse-crm/README.md](./pulse-crm/README.md).

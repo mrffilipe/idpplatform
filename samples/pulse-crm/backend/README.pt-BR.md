@@ -27,7 +27,7 @@ API de exemplo que valida JWTs emitidos pela IdP Platform e chama `POST /v1.0/au
 
 ```
 1. SPA → GET {Authority}/connect/authorize?client_id=...&code_challenge=...&scope=openid+profile+email+offline_access
-2. Usuário autentica em /account/login (IdP)
+2. Usuário autentica em /account/login OU cria conta em /account/register (cadastro central no IdP; este sample não tem tela própria de cadastro)
 3. Redirect → http://localhost:5173/auth/callback?code=...&state=...
 4. SPA → POST {Authority}/connect/token (authorization_code + code_verifier)
 5. SPA armazena access_token + refresh_token

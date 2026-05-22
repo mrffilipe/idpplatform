@@ -43,7 +43,7 @@ Abra http://localhost:5173
 
 ## Fluxo de teste
 
-1. **Login / Criar conta** — a SPA redireciona para `/connect/authorize`. A tela de login do IdP permite entrar OU seguir "Criar conta" para `/account/register`. Novos usuários ficam autenticados imediatamente após o cadastro.
+1. **Login / Criar conta** — a SPA redireciona para `/connect/authorize`. A tela de login do IdP permite entrar OU seguir o link para criar conta (`/account/register`). Novos usuários ficam autenticados imediatamente após o cadastro.
 2. **Onboarding** — de volta no SPA, a ausência de `tid` direciona o usuário para escolher plano (`starter`, `professional`, `enterprise`) e nome da empresa.
 3. **Pagamento** — mock aprovado → a API do CRM chama `auth/subscribe` na plataforma para criar Tenant + Membership + ApplicationTenant.
 4. **Refresh do token** — o SPA renova o token para obter claims `tid` / `mid`.
