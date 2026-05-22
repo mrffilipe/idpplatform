@@ -11,9 +11,3 @@ public interface IOidcAuthorizationService
         IReadOnlyList<string> scopes,
         CancellationToken cancellationToken = default);
 }
-
-public sealed class ApplicationClientValidationContext
-{
-    public required Domain.Entities.ApplicationClient Client { get; init; }
-    public required IReadOnlyList<string> Scopes { get; init; }
-}

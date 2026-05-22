@@ -78,11 +78,21 @@ public sealed class IdentityProvidersController : V1ApiControllerBase
         return NoContent();
     }
 
-    public sealed record AddIdentityProviderBody(
-        string Alias,
-        string DisplayName,
-        IdentityProviderType ProviderType,
-        string? ConfigJson);
+    public sealed record AddIdentityProviderBody
+    {
+        public required string Alias { get; init; }
 
-    public sealed record UpdateIdentityProviderBody(string DisplayName, string? ConfigJson);
+        public required string DisplayName { get; init; }
+
+        public required IdentityProviderType ProviderType { get; init; }
+
+        public string? ConfigJson { get; init; }
+    }
+
+    public sealed record UpdateIdentityProviderBody
+    {
+        public required string DisplayName { get; init; }
+
+        public string? ConfigJson { get; init; }
+    }
 }

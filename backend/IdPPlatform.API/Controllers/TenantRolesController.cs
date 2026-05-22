@@ -74,6 +74,21 @@ public sealed class TenantRolesController : V1ApiControllerBase
         return NoContent();
     }
 
-    public sealed record CreateTenantRoleBody(string Key, string Name, string? Description);
-    public sealed record UpdateTenantRoleBody(string Name, string? Description, bool IsActive);
+    public sealed record CreateTenantRoleBody
+    {
+        public required string Key { get; init; }
+
+        public required string Name { get; init; }
+
+        public string? Description { get; init; }
+    }
+
+    public sealed record UpdateTenantRoleBody
+    {
+        public required string Name { get; init; }
+
+        public string? Description { get; init; }
+
+        public required bool IsActive { get; init; }
+    }
 }

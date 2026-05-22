@@ -5,9 +5,7 @@ public interface IOidcTokenService
     Task<(OidcTokenResponse? Response, OidcError? Error)> ExchangeAsync(OidcTokenRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Emite novos tokens para a sessão atual (ex.: após subscribe, quando o access token ainda não tem tid).
+    /// Issues fresh tokens for the current session (e.g., after subscribe, when the access token does not yet contain tid).
     /// </summary>
-    Task<(OidcTokenResponse? Response, OidcError? Error)> IssueForSessionAsync(
-        Guid sessionId,
-        CancellationToken cancellationToken = default);
+    Task<(OidcTokenResponse? Response, OidcError? Error)> IssueForSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
 }

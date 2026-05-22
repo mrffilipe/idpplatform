@@ -51,7 +51,7 @@ public sealed class TenantStore : ITenantStore<TenantInfoAdapter>
         }
         catch
         {
-            // Cache indisponível (ex.: Redis offline) — segue para o banco.
+            // Cache unavailable (e.g., Redis offline) — fall through to the database.
         }
 
         var tenant = await _context.Tenants
@@ -67,7 +67,12 @@ public sealed class TenantStore : ITenantStore<TenantInfoAdapter>
 
         try
         {
-            var entry = new CachedTenantInfo(adapter.Id, adapter.Identifier, adapter.Name);
+            var entry = new CachedTenantInfo
+            {
+                Id = adapter.Id,
+                Identifier = adapter.Identifier,
+                Name = adapter.Name
+            };
             await _distributedCache.SetStringAsync(
                 cacheKey,
                 JsonSerializer.Serialize(entry),
@@ -80,11 +85,18 @@ public sealed class TenantStore : ITenantStore<TenantInfoAdapter>
         }
         catch
         {
-            // Ignora falha de escrita no cache.
+            // Ignore cache write failures.
         }
 
         return adapter;
     }
 
-    private sealed record CachedTenantInfo(string Id, string Identifier, string Name);
+    private sealed record CachedTenantInfo
+    {
+        public required string Id { get; init; }
+
+        public required string Identifier { get; init; }
+
+        public required string Name { get; init; }
+    }
 }

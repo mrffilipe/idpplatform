@@ -1,9 +1,13 @@
 using Amazon;
 using Amazon.Runtime;
 using Amazon.SimpleEmailV2;
+using IdPPlatform.Application.Services.IdentityProvider;
+using IdPPlatform.Application.Services.Security;
 using IdPPlatform.Infrastructure.Configurations;
 using IdPPlatform.Infrastructure.Persistence;
 using IdPPlatform.Infrastructure.Persistence.Interceptors;
+using IdPPlatform.Infrastructure.Services.Security;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,23 +29,37 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
 
-        services.AddOptions<SessionOptions>()
-            .Bind(configuration.GetSection(SessionOptions.Section));
-
         services.AddOptions<RateLimitOptions>()
-            .Bind(configuration.GetSection(RateLimitOptions.Section));
+            .Bind(configuration.GetSection(RateLimitOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<RateLimitOptions>, RateLimitOptionsValidator>();
 
         services.AddOptions<InviteOptions>()
-            .Bind(configuration.GetSection(InviteOptions.Section));
+            .Bind(configuration.GetSection(InviteOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<InviteOptions>, InviteOptionsValidator>();
 
         services.AddOptions<EmailOptions>()
-            .Bind(configuration.GetSection(EmailOptions.Section));
+            .Bind(configuration.GetSection(EmailOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<EmailOptions>, EmailOptionsValidator>();
 
         services.AddOptions<RedisOptions>()
-            .Bind(configuration.GetSection(RedisOptions.Section));
+            .Bind(configuration.GetSection(RedisOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<RedisOptions>, RedisOptionsValidator>();
 
         services.AddOptions<BootstrapOptions>()
-            .Bind(configuration.GetSection(BootstrapOptions.Section));
+            .Bind(configuration.GetSection(BootstrapOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<BootstrapOptions>, BootstrapOptionsValidator>();
+
+        services.AddOptions<SecretProtectionOptions>()
+            .Bind(configuration.GetSection(SecretProtectionOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<SecretProtectionOptions>, SecretProtectionOptionsValidator>();
+
+        services.AddSecretProtection(configuration);
 
         services.AddHttpContextAccessor();
         services.AddDistributedCaching(configuration);
@@ -108,6 +126,26 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddDistributedMemoryCache();
+        return services;
+    }
+
+    private static IServiceCollection AddSecretProtection(this IServiceCollection services, IConfiguration configuration)
+    {
+        var options = configuration.GetSection(SecretProtectionOptions.Section).Get<SecretProtectionOptions>()
+                      ?? new SecretProtectionOptions();
+
+        var keyDirectory = Path.IsPathRooted(options.KeyDirectoryPath)
+            ? options.KeyDirectoryPath
+            : Path.Combine(AppContext.BaseDirectory, options.KeyDirectoryPath);
+        Directory.CreateDirectory(keyDirectory);
+
+        services.AddDataProtection()
+            .SetApplicationName(options.ApplicationName)
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+        services.AddSingleton<IIdentityProviderConfigCipher, IdentityProviderConfigCipher>();
+
         return services;
     }
 }

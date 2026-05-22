@@ -107,20 +107,40 @@ public sealed class ApplicationsController : V1ApiControllerBase
         return Ok(result);
     }
 
-    public sealed record CreateApplicationBody(string Name, string Slug, ApplicationType Type);
+    public sealed record CreateApplicationBody
+    {
+        public required string Name { get; init; }
 
-    public sealed record CreateApplicationClientBody(
-        string ClientId,
-        string? ClientSecretHash,
-        ClientType ClientType,
-        string RedirectUris,
-        string AllowedScopes,
-        int AccessTokenTtlSeconds);
+        public required string Slug { get; init; }
 
-    public sealed record ProvisionApplicationTenantBody(
-        string TenantName,
-        string TenantKey,
-        Guid? InitialAdministratorUserId,
-        string? ExternalCustomerId,
-        string? PlanCode);
+        public required ApplicationType Type { get; init; }
+    }
+
+    public sealed record CreateApplicationClientBody
+    {
+        public required string ClientId { get; init; }
+
+        public string? ClientSecretHash { get; init; }
+
+        public required ClientType ClientType { get; init; }
+
+        public required string RedirectUris { get; init; }
+
+        public required string AllowedScopes { get; init; }
+
+        public required int AccessTokenTtlSeconds { get; init; }
+    }
+
+    public sealed record ProvisionApplicationTenantBody
+    {
+        public required string TenantName { get; init; }
+
+        public required string TenantKey { get; init; }
+
+        public Guid? InitialAdministratorUserId { get; init; }
+
+        public string? ExternalCustomerId { get; init; }
+
+        public string? PlanCode { get; init; }
+    }
 }

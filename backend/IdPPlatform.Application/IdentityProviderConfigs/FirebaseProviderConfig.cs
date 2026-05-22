@@ -9,7 +9,7 @@ public sealed class FirebaseProviderConfig
     public string WebApiKey { get; init; } = string.Empty;
 
     /// <summary>
-    /// Domínio de auth do app Web (ex.: meu-projeto.firebaseapp.com). Se vazio, usa {projectId}.firebaseapp.com.
+    /// Web app auth domain (e.g., my-project.firebaseapp.com). When empty, falls back to {projectId}.firebaseapp.com.
     /// </summary>
     public string? AuthDomain { get; init; }
 

@@ -61,5 +61,10 @@ public sealed class UsersController : V1ApiControllerBase
         return Ok(result);
     }
 
-    public sealed record UpdateMeBody(string DisplayName, string? PhotoUrl);
+    public sealed record UpdateMeBody
+    {
+        public required string DisplayName { get; init; }
+
+        public string? PhotoUrl { get; init; }
+    }
 }

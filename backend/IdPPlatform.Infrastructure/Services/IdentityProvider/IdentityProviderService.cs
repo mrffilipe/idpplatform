@@ -11,15 +11,18 @@ public sealed class IdentityProviderService : IIdentityProviderService
 {
     private readonly IIdentityProviderRepository _identityProviders;
     private readonly IIdentityProviderConfigValidator _configValidator;
+    private readonly IIdentityProviderConfigCipher _configCipher;
     private readonly IUnitOfWork _unitOfWork;
 
     public IdentityProviderService(
         IIdentityProviderRepository identityProviders,
         IIdentityProviderConfigValidator configValidator,
+        IIdentityProviderConfigCipher configCipher,
         IUnitOfWork unitOfWork)
     {
         _identityProviders = identityProviders;
         _configValidator = configValidator;
+        _configCipher = configCipher;
         _unitOfWork = unitOfWork;
     }
 
@@ -32,12 +35,15 @@ public sealed class IdentityProviderService : IIdentityProviderService
 
         _configValidator.ValidateForSave(request.ProviderType, request.ConfigJson);
 
+        // Encrypt sensitive fields before persisting so secrets never live in plain text at rest.
+        var encryptedConfig = _configCipher.Encrypt(request.ProviderType, request.ConfigJson);
+
         var provider = new Domain.Entities.IdentityProvider(
             request.Alias,
             request.DisplayName,
             request.ProviderType,
             enabled: true,
-            request.ConfigJson);
+            encryptedConfig);
 
         await _identityProviders.AddAsync(provider, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -54,7 +60,8 @@ public sealed class IdentityProviderService : IIdentityProviderService
         if (request.ConfigJson is not null)
         {
             _configValidator.ValidateForSave(provider.ProviderType, request.ConfigJson);
-            provider.UpdateConfig(request.ConfigJson);
+            var encryptedConfig = _configCipher.Encrypt(provider.ProviderType, request.ConfigJson);
+            provider.UpdateConfig(encryptedConfig);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

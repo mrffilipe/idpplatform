@@ -90,7 +90,7 @@ public sealed class AuthorizationController : Controller
                 return OAuthRedirectError(request.RedirectUri, request.State, new OidcError
                 {
                     Error = OidcConstants.Errors.LoginRequired,
-                    ErrorDescription = "Interactive login is required."
+                    ErrorDescription = ApiErrorMessages.OidcLogin.InteractiveLoginRequired
                 });
             }
 
@@ -106,7 +106,7 @@ public sealed class AuthorizationController : Controller
             return OAuthRedirectError(request.RedirectUri, request.State, new OidcError
             {
                 Error = OidcConstants.Errors.LoginRequired,
-                ErrorDescription = "Session is no longer active."
+                ErrorDescription = ApiErrorMessages.OidcLogin.SessionNoLongerActive
             });
         }
 
@@ -122,7 +122,7 @@ public sealed class AuthorizationController : Controller
             return OAuthRedirectError(request.RedirectUri, request.State, new OidcError
             {
                 Error = OidcConstants.Errors.LoginRequired,
-                ErrorDescription = "Unable to build token claims."
+                ErrorDescription = ApiErrorMessages.OidcLogin.UnableToBuildClaims
             });
         }
 
@@ -241,11 +241,11 @@ public sealed class AuthorizationController : Controller
         var loginJson = principal.FindFirstValue("idp_login");
         if (string.IsNullOrWhiteSpace(loginJson))
         {
-            throw new InvalidOperationException("Login context is missing from the authentication cookie.");
+            throw new InvalidOperationException(ApiErrorMessages.OidcLogin.MissingLoginContext);
         }
 
         return JsonSerializer.Deserialize<OidcLoginContext>(loginJson)
-            ?? throw new InvalidOperationException("Login context is invalid.");
+            ?? throw new InvalidOperationException(ApiErrorMessages.OidcLogin.InvalidLoginContext);
     }
 
     private IActionResult OAuthRedirectError(string? redirectUri, string? state, OidcError error)

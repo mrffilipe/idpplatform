@@ -103,11 +103,19 @@ public sealed class AuthController : V1ApiControllerBase
         return NoContent();
     }
 
-    public sealed record SubscribeTenantBody(
-        string TenantName,
-        string TenantKey,
-        string? PlanCode,
-        string? ExternalCustomerId);
+    public sealed record SubscribeTenantBody
+    {
+        public required string TenantName { get; init; }
 
-    public sealed record SwitchTenantBody(Guid TenantId);
+        public required string TenantKey { get; init; }
+
+        public string? PlanCode { get; init; }
+
+        public string? ExternalCustomerId { get; init; }
+    }
+
+    public sealed record SwitchTenantBody
+    {
+        public required Guid TenantId { get; init; }
+    }
 }

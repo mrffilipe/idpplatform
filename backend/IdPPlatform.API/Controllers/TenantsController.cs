@@ -122,8 +122,29 @@ public sealed class TenantsController : V1ApiControllerBase
         return Ok(new { membershipId });
     }
 
-    public sealed record CreateTenantBody(string Name, string Key, Guid? InitialAdministratorUserId);
-    public sealed record UpdateTenantBody(string Name);
-    public sealed record InviteMemberBody(string Email, IReadOnlyCollection<string> Roles);
-    public sealed record AcceptInviteBody(string Token);
+    public sealed record CreateTenantBody
+    {
+        public required string Name { get; init; }
+
+        public required string Key { get; init; }
+
+        public Guid? InitialAdministratorUserId { get; init; }
+    }
+
+    public sealed record UpdateTenantBody
+    {
+        public required string Name { get; init; }
+    }
+
+    public sealed record InviteMemberBody
+    {
+        public required string Email { get; init; }
+
+        public required IReadOnlyCollection<string> Roles { get; init; }
+    }
+
+    public sealed record AcceptInviteBody
+    {
+        public required string Token { get; init; }
+    }
 }

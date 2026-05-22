@@ -11,8 +11,8 @@ public class Application : BaseEntity
     public ApplicationType Type { get; private set; }
 
     /// <summary>
-    /// Indica que esta aplicação é gerida pela plataforma e não pode ser editada ou removida por API.
-    /// Exemplo: o admin console criado automaticamente no bootstrap.
+    /// Indicates that this application is managed by the platform and cannot be edited or removed via API.
+    /// Example: the admin console created automatically during bootstrap.
     /// </summary>
     public bool IsSystem { get; private set; }
 

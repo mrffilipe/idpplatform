@@ -1,18 +1,20 @@
-# PulseCRM API — autenticação e autorização (IdP Platform)
+# PulseCRM API — authentication and authorization (IdP Platform)
 
-API de exemplo que valida JWTs emitidos pela IdP Platform e chama `POST /v1.0/auth/subscribe` para vincular tenant + plano (`ApplicationTenant`).
+[English](./README.md) | [Português](./README.pt-BR.md)
 
-## 1. Registrar Application e Client no painel
+Sample API that validates JWTs issued by the IdP Platform and calls `POST /v1.0/auth/subscribe` to link tenant + plan (`ApplicationTenant`).
 
-| Campo | Valor |
+## 1. Register the Application and Client in the admin console
+
+| Field | Value |
 |-------|-------|
 | Application slug | `pulse-crm` |
 | Client ID | `pulse-crm-web` |
-| Tipo | Public |
+| Type | Public |
 | Redirect URI | `http://localhost:5173/auth/callback` |
 | Scopes | `openid profile email offline_access` |
 
-`appsettings.Development.json` deve apontar para o mesmo issuer/audience da plataforma:
+`appsettings.Development.json` must point to the same issuer/audience as the platform:
 
 ```json
 "IdP": {
@@ -21,41 +23,41 @@ API de exemplo que valida JWTs emitidos pela IdP Platform e chama `POST /v1.0/au
 }
 ```
 
-## 2. Fluxo OAuth2 / OIDC (SPA)
+## 2. OAuth2 / OIDC flow (SPA)
 
 ```
 1. SPA → GET {Authority}/connect/authorize?client_id=...&code_challenge=...&scope=openid+profile+email+offline_access
-2. Usuário autentica em /account/login (IdP)
+2. The user authenticates at /account/login (IdP)
 3. Redirect → http://localhost:5173/auth/callback?code=...&state=...
 4. SPA → POST {Authority}/connect/token (authorization_code + code_verifier)
-5. SPA armazena access_token + refresh_token
+5. SPA stores access_token + refresh_token
 6. SPA → POST PulseCRM /api/onboarding/complete (Bearer access_token)
-7. PulseCRM → POST {Authority}/v1.0/auth/subscribe (repassa o mesmo Bearer)
-8. SPA → POST /connect/token (refresh_token) para obter JWT com claims tid e mid
+7. PulseCRM → POST {Authority}/v1.0/auth/subscribe (forwards the same Bearer)
+8. SPA → POST /connect/token (refresh_token) to obtain a JWT with tid and mid claims
 ```
 
-## 3. Validação JWT nesta API
+## 3. JWT validation in this API
 
-- **Authority** = issuer (`Jwt:Issuer` da plataforma, ex. `http://localhost:5000`)
-- **Audience** = `idpplatform-api` (claim `aud` do access token)
-- Chaves públicas via JWKS: `{Authority}/.well-known/jwks.json`
+- **Authority** = issuer (`Jwt:Issuer` from the platform, e.g., `http://localhost:5000`)
+- **Audience** = `idpplatform-api` (`aud` claim of the access token)
+- Public keys via JWKS: `{Authority}/.well-known/jwks.json`
 
-Claims úteis no access token:
+Useful access-token claims:
 
-| Claim | Uso no CRM |
-|-------|------------|
-| `uid` / `sub` | Identificador do usuário |
-| `email` | Perfil |
-| `tid` | Tenant ativo (obrigatório para `/api/contacts`) |
-| `mid` | Membership no tenant |
-| `trole` | Papéis no tenant |
-| `prole` | Papéis de plataforma |
+| Claim | CRM usage |
+|-------|-----------|
+| `uid` / `sub` | User identifier |
+| `email` | Profile |
+| `tid` | Active tenant (required for `/api/contacts`) |
+| `mid` | Membership in the tenant |
+| `trole` | Tenant roles |
+| `prole` | Platform roles |
 
-Sem `tid` após login: o usuário ainda não fez subscribe ou não renovou o token.
+No `tid` after login: the user has not subscribed yet, or has not refreshed the token.
 
-## 4. `auth/subscribe` e ApplicationTenant
+## 4. `auth/subscribe` and ApplicationTenant
 
-`POST /api/onboarding/complete` chama a plataforma:
+`POST /api/onboarding/complete` calls the platform:
 
 ```http
 POST /v1.0/auth/subscribe
@@ -70,36 +72,36 @@ Content-Type: application/json
 }
 ```
 
-A plataforma cria:
+The platform creates:
 
-- **Tenant** + membership (owner) para o usuário da sessão OAuth
-- **ApplicationTenant** ligando a application do client `pulse-crm-web` ao tenant, com `planCode` e `externalCustomerId`
+- **Tenant** + membership (owner) for the user of the OAuth session
+- **ApplicationTenant** linking the application of client `pulse-crm-web` to the tenant, with `planCode` and `externalCustomerId`
 
-O CRM persiste cópia local em SQLite (`Subscriptions`) para exibir plano no dashboard.
+The CRM also stores a local copy in SQLite (`Subscriptions`) to display the plan on the dashboard.
 
-## 5. Refresh após subscribe
+## 5. Refresh after subscribe
 
-O access token emitido **antes** do subscribe não contém `tid`. O SPA deve chamar:
+The access token issued **before** subscribing does not contain `tid`. The SPA must call:
 
 ```http
 POST /connect/token
 grant_type=refresh_token&refresh_token=...&client_id=pulse-crm-web
 ```
 
-Requer scope `offline_access` no client.
+Requires the `offline_access` scope on the client.
 
 ## 6. Troubleshooting
 
-| Erro | Causa | Solução |
-|------|-------|---------|
-| `invalid_scope` / `offline_access` | Client sem scope | Adicionar `offline_access` nos allowed scopes |
-| 401 na API CRM | Audience/issuer incorretos | Conferir `IdP:Authority` e `IdP:Audience` |
-| Contacts 400 “missing tid” | Token antigo | Refresh token após onboarding |
-| Subscribe 403/400 | Sessão sem client OAuth | Login via authorize do client `pulse-crm-web` |
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `invalid_scope` / `offline_access` | Client without the scope | Add `offline_access` to allowed scopes |
+| 401 on the CRM API | Wrong audience/issuer | Check `IdP:Authority` and `IdP:Audience` |
+| Contacts 400 "missing tid" | Stale token | Refresh the token after onboarding |
+| Subscribe 403/400 | Session without an OAuth client | Sign in via the authorize endpoint of the `pulse-crm-web` client |
 
-## Endpoints locais
+## Local endpoints
 
-| Método | Rota |
+| Method | Path |
 |--------|------|
 | GET | `/api/health` |
 | GET | `/api/me` |

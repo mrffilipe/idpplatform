@@ -20,12 +20,19 @@ public sealed class FirebaseTokenValidator : IIdentityProviderTokenValidator
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly IIdentityProviderConfigCipher _configCipher;
+
+    public FirebaseTokenValidator(IIdentityProviderConfigCipher configCipher)
+    {
+        _configCipher = configCipher;
+    }
+
     public async Task<ExternalAuthResult> ValidateAsync(
         Domain.Entities.IdentityProvider provider,
         string identityToken,
         CancellationToken cancellationToken = default)
     {
-        var config = DeserializeConfig(provider.ConfigJson);
+        var config = DeserializeConfig(_configCipher.Decrypt(provider.ConfigJson));
         var auth = GetOrCreateAuth(provider.Alias, config);
 
         FirebaseToken token;

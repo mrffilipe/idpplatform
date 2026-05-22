@@ -1,30 +1,32 @@
-# Samples — aplicações consumidoras
+# Samples — consumer applications
 
-Exemplos de integração com a IdP Platform (OAuth2 / OIDC).
+[English](./README.md) | [Português](./README.pt-BR.md)
 
-| Sample | Descrição |
-|--------|-----------|
-| [pulse-crm](./pulse-crm/) | CRM SaaS de referência: login OIDC, onboarding com plano, `auth/subscribe`, CRUD por tenant |
+Integration examples for the IdP Platform (OAuth2 / OIDC).
 
-## PulseCRM — checklist no painel admin
+| Sample | Description |
+|--------|-------------|
+| [pulse-crm](./pulse-crm/) | Reference SaaS CRM: OIDC login, plan onboarding, `auth/subscribe`, per-tenant CRUD |
 
-Antes de rodar o sample, crie no painel (`http://localhost:3000`) em **Applications**:
+## PulseCRM — admin console checklist
 
-| Campo | Valor |
+Before running the sample, create the following in the admin console (`http://localhost:3000`) under **Applications**:
+
+| Field | Value |
 |-------|-------|
-| Nome | Pulse CRM |
+| Name | Pulse CRM |
 | Slug | `pulse-crm` |
-| Tipo | Web |
+| Type | Web |
 
-Em **Clients** da application:
+Under the application's **Clients**:
 
-| Campo | Valor |
+| Field | Value |
 |-------|-------|
 | Client ID | `pulse-crm-web` |
-| Tipo | Public |
+| Type | Public |
 | Redirect URIs | `http://localhost:5173/auth/callback` |
-| Scopes permitidos | `openid profile email offline_access` |
+| Allowed scopes | `openid profile email offline_access` |
 
-Os mesmos valores estão em [`pulse-crm/frontend/.env.example`](./pulse-crm/frontend/.env.example).
+The same values live in [`pulse-crm/frontend/.env.example`](./pulse-crm/frontend/.env.example).
 
-Guia completo: [pulse-crm/README.md](./pulse-crm/README.md).
+Full guide: [pulse-crm/README.md](./pulse-crm/README.md).

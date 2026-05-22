@@ -1,60 +1,66 @@
 # IdP Platform
 
-Plataforma de **identidade e acesso (IdP)** para um ecossistema de aplicações: centraliza autenticação local, emite tokens JWT via OIDC, organiza tenants (organizações), membros, papéis, aplicações OAuth e suporta federação de provedores externos (Firebase, Cognito, etc.).
+[English](./README.md) | [Português](./README.pt-BR.md)
 
-Inspirado no modelo Keycloak-like: um IdP gerenciado, multi-tenant, com painel administrativo próprio.
+An **identity and access platform (IdP)** for an ecosystem of applications: centralizes local authentication, issues JWT tokens via OIDC, organizes tenants (organizations), members, roles, OAuth applications, and supports federation with external providers (Firebase, Cognito, etc.).
 
----
-
-## Primeiros passos
-
-Consulte o guia completo em **[GETTING_STARTED.md](./GETTING_STARTED.md)** para configurar e rodar o sistema do zero.
+Inspired by Keycloak-style platforms: a managed, multi-tenant IdP with its own admin console.
 
 ---
 
-## Estrutura do repositório
+## Getting started
+
+See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for a full walkthrough to configure and run the system from scratch.
+
+---
+
+## Repository layout
 
 ```
-backend/    API ASP.NET Core 8 — Clean Architecture (Domain / Application / Infrastructure / API)
-            Ferramenta auxiliar: tools/GenerateOidcKey (gera chave RSA no diretório da API)
-frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
-samples/    Aplicações consumidoras de referência (ex.: pulse-crm — CRM SaaS + OIDC)
-.github/    Workflows de CI (quando configurados)
+backend/    ASP.NET Core 8 API — Clean Architecture (Domain / Application / Infrastructure / API)
+            Helper tool: tools/GenerateOidcKey (writes the RSA key into the API folder)
+frontend/   Admin SPA — React 19 + MUI + React Router 7 + Vite
+samples/    Reference consumer applications (e.g., pulse-crm — SaaS CRM + OIDC)
+rules/      Standards and conventions: backend-rules.md, frontend-rules.md
+.github/    CI workflows (when configured)
 ```
 
 ---
 
-## Documentação
+## Documentation
 
-| Documento | Conteúdo |
-|-----------|----------|
-| [GETTING_STARTED.md](./GETTING_STARTED.md) | Guia passo a passo: configurar, rodar e fazer o bootstrap do zero |
-| [backend/README.md](./backend/README.md) | Arquitetura, configuração, endpoints, migrations e OIDC do backend |
-| [frontend/README.md](./frontend/README.md) | Stack, variáveis de ambiente, fluxo OIDC e páginas do frontend |
-| [samples/README.md](./samples/README.md) | Samples consumidores e checklist de OAuth no painel |
-| [samples/pulse-crm/README.md](./samples/pulse-crm/README.md) | PulseCRM: como rodar e testar integração OIDC |
-
----
-
-## Visão geral do produto
-
-| Conceito | Descrição |
-|----------|-----------|
-| **IdP local** | Autenticação por email + senha armazenada com BCrypt. Configurado no bootstrap. |
-| **OIDC** | Fluxo authorization code + PKCE. Tokens RS256. Discovery em `/.well-known/openid-configuration`. |
-| **Multi-tenant** | Usuários pertencem a múltiplos tenants com papéis independentes. |
-| **Platform admin** | Usuários com `prole=plat_admin` gerenciam tenants, applications e IdPs globais. |
-| **Applications OAuth** | Registro de apps consumidoras com clients públicos (PKCE) ou confidenciais. |
-| **Identity Providers** | Federação extensível: Local (padrão), Firebase, Cognito, Genérico. |
-| **Audit logs** | Rastreio de eventos por tenant. |
+| Document | Content |
+|----------|---------|
+| [GETTING_STARTED.md](./GETTING_STARTED.md) | Step-by-step guide: configure, run, and bootstrap from scratch |
+| [rules/backend-rules.md](./rules/backend-rules.md) | Backend conventions, formatting, options pattern, secrets, OIDC |
+| [rules/frontend-rules.md](./rules/frontend-rules.md) | Frontend conventions, env vars with defaults, OIDC flow |
+| [backend/README.md](./backend/README.md) | Backend architecture, configuration, endpoints, migrations, OIDC |
+| [frontend/README.md](./frontend/README.md) | Frontend stack, environment variables, OIDC flow, and pages |
+| [samples/README.md](./samples/README.md) | Sample consumers and OAuth checklist in the admin console |
+| [samples/pulse-crm/README.md](./samples/pulse-crm/README.md) | PulseCRM: how to run and test the OIDC integration |
 
 ---
 
-## Pré-requisitos rápidos
+## Product overview
+
+| Concept | Description |
+|---------|-------------|
+| **Local IdP** | Email + password authentication stored with BCrypt. Configured at bootstrap. |
+| **OIDC** | Authorization code + PKCE flow. RS256 tokens. Discovery at `/.well-known/openid-configuration`. |
+| **Multi-tenant** | Users belong to multiple tenants with independent roles. |
+| **Platform admin** | Users with `prole=plat_admin` manage tenants, applications, and global IdPs. |
+| **OAuth applications** | Registry of consumer apps with public (PKCE) or confidential clients. |
+| **Identity Providers** | Extensible federation: Local (default), Firebase, Cognito, Generic. |
+| **Secret protection** | IdP credentials (Firebase ServiceAccount, WebApiKey) are encrypted at rest via ASP.NET Core Data Protection. |
+| **Audit logs** | Event tracking per tenant. |
+
+---
+
+## Quick prerequisites
 
 - .NET 8 SDK
 - Node.js (LTS)
 - PostgreSQL 14+
-- Redis (opcional)
+- Redis (optional)
 
-Para o guia completo de instalação: [GETTING_STARTED.md](./GETTING_STARTED.md).
+For the full installation guide see [GETTING_STARTED.md](./GETTING_STARTED.md).

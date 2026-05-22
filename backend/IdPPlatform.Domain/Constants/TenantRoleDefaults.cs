@@ -9,10 +9,10 @@ public static class TenantRoleDefaults
 
     public static readonly IReadOnlyList<TenantRoleDefinition> All =
     [
-        new(Owner, "Owner"),
-        new(Admin, "Admin"),
-        new(Member, "Member"),
-        new(Viewer, "Viewer")
+        new() { Key = Owner, Name = "Owner" },
+        new() { Key = Admin, Name = "Admin" },
+        new() { Key = Member, Name = "Member" },
+        new() { Key = Viewer, Name = "Viewer" }
     ];
 
     public static readonly IReadOnlySet<string> AdministrativeKeys =
@@ -30,5 +30,3 @@ public static class TenantRoleDefaults
         };
     }
 }
-
-public sealed record TenantRoleDefinition(string Key, string Name);

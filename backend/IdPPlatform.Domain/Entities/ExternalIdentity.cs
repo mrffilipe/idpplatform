@@ -7,8 +7,6 @@ namespace IdPPlatform.Domain.Entities;
 public class ExternalIdentity : BaseEntity
 {
     public Guid UserId { get; private set; }
-    public User User { get; private set; } = null!;
-
     public string Provider { get; private set; } = string.Empty;
     public string ProviderUserId { get; private set; } = string.Empty;
     public EmailAddress Email { get; private set; } = null!;

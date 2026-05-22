@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
+using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Application.Services.Oidc;
 using IdPPlatform.Infrastructure.Configurations;
 using Microsoft.Extensions.Options;
@@ -89,7 +90,7 @@ public sealed class JwtSigningService : IJwtSigningService
 
     private static string BuildJwksJson(RsaSecurityKey key, string keyId)
     {
-        var parameters = key.Rsa ?? throw new InvalidOperationException("RSA key is not available.");
+        var parameters = key.Rsa ?? throw new InvalidOperationException(ApplicationErrorMessages.Signing.RsaKeyNotAvailable);
         var export = parameters.ExportParameters(false);
 
         var jwk = new Dictionary<string, object>

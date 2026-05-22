@@ -79,6 +79,15 @@ public sealed class MembershipsController : V1ApiControllerBase
         return NoContent();
     }
 
-    public sealed record CreateMembershipBody(Guid UserId, IReadOnlyCollection<string> Roles);
-    public sealed record UpdateMembershipRoleBody(IReadOnlyCollection<string> Roles);
+    public sealed record CreateMembershipBody
+    {
+        public required Guid UserId { get; init; }
+
+        public required IReadOnlyCollection<string> Roles { get; init; }
+    }
+
+    public sealed record UpdateMembershipRoleBody
+    {
+        public required IReadOnlyCollection<string> Roles { get; init; }
+    }
 }

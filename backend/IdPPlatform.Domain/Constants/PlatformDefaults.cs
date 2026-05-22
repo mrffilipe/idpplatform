@@ -1,8 +1,8 @@
 namespace IdPPlatform.Domain.Constants;
 
 /// <summary>
-/// Constantes fixas da aplicação admin console da plataforma.
-/// Estes valores não são configuráveis por API nem por painel; são parte do contrato do produto.
+/// Fixed constants for the platform admin console application.
+/// These values are not configurable via API or panel; they are part of the product contract.
 /// </summary>
 public static class PlatformDefaults
 {

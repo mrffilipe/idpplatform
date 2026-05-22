@@ -11,6 +11,8 @@ public interface IIdentityProviderRepository
 
     Task<IdentityProvider?> GetEnabledByAliasAsync(string alias, CancellationToken cancellationToken = default);
 
+    Task<IdentityProvider?> GetEnabledByTypeAsync(IdentityProviderType type, CancellationToken cancellationToken = default);
+
     Task<IdentityProvider?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<IdentityProvider>> ListEnabledAsync(CancellationToken cancellationToken = default);
@@ -20,8 +22,4 @@ public interface IIdentityProviderRepository
     Task<bool> AliasAlreadyExistsAsync(string alias, CancellationToken cancellationToken = default);
 
     Task<bool> AnyEnabledLocalProviderAsync(CancellationToken cancellationToken = default);
-
-    Task<IdentityProvider?> GetEnabledByTypeAsync(
-        IdentityProviderType type,
-        CancellationToken cancellationToken = default);
 }

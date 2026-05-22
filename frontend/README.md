@@ -1,156 +1,162 @@
 # IdP Platform — Frontend
 
-Painel administrativo (SPA) do IdP Platform. Consome a API via OIDC (authorization code + PKCE) e expõe interface para gestão de tenants, memberships, applications, identity providers e audit logs.
+[English](./README.md) | [Português](./README.pt-BR.md)
+
+Admin SPA for the IdP Platform. Consumes the API via OIDC (authorization code + PKCE) and exposes the UI to manage tenants, memberships, applications, identity providers, and audit logs.
+
+> Coding conventions and required patterns: see [../rules/frontend-rules.md](../rules/frontend-rules.md).
 
 ---
 
 ## Stack
 
-| Tecnologia | Versão | Uso |
-|------------|--------|-----|
+| Technology | Version | Use |
+|------------|---------|-----|
 | React | 19 | UI |
-| React Router | 7 (Data Mode) | Roteamento com loaders |
+| React Router | 7 (Data mode) | Routing with loaders |
 | Material UI | 9 | Design system |
 | Axios | 1.x | HTTP client |
-| TypeScript | 6 | Tipagem estática |
-| Vite | 8 | Build e dev server |
+| TypeScript | 6 | Static typing |
+| Vite | 8 | Build and dev server |
 
 ---
 
-## Pré-requisitos
+## Prerequisites
 
-- Node.js (versão compatível com `package.json`)
-- Backend rodando em `VITE_API_BASE_URL` (ver configuração)
-- Credenciais de bootstrap configuradas no backend (`Bootstrap` no appsettings ou `Bootstrap__*` no ambiente)
-- Se a plataforma ainda não foi inicializada, o próprio frontend executa o bootstrap na tela `/login` (botão **Inicializar plataforma**)
+- Node.js (compatible with the version declared in `package.json`)
+- Backend running at `VITE_API_BASE_URL` (see configuration)
+- Bootstrap credentials configured in the backend (`Bootstrap` in appsettings or `Bootstrap__*` env vars)
+- If the platform has not been bootstrapped yet, the frontend itself runs the bootstrap from the `/login` screen (**Initialize platform** button)
 
 ---
 
-## Configuração
+## Configuration
 
-Copie `.env.example` para `.env` e preencha:
+Every variable below has a built-in default in `src/config/env.ts`, so the SPA runs in local development without an `.env` file. To override defaults locally, copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variável | Exemplo | Descrição |
-|----------|---------|-----------|
-| `VITE_API_BASE_URL` | `http://localhost:5000` | URL base da API backend |
-| `VITE_API_VERSION` | `1.0` | Versão da API (gera `/v1.0/...`) |
-| `VITE_API_TIMEOUT_MS` | `30000` | Timeout das requisições Axios (ms) |
-| `VITE_OAUTH_CLIENT_ID` | `platform-admin-web` | Client OAuth registrado no IdP |
-| `VITE_OAUTH_REDIRECT_URI` | `http://localhost:3000/auth/callback` | URI de callback OIDC |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_BASE_URL` | `http://localhost:5000` | Backend API base URL |
+| `VITE_API_VERSION` | `1.0` | API version (produces `/v1.0/...`) |
+| `VITE_API_TIMEOUT_MS` | `30000` | Axios request timeout (ms) |
+| `VITE_OAUTH_CLIENT_ID` | `platform-admin-web` | OAuth client registered in the IdP |
+| `VITE_OAUTH_REDIRECT_URI` | `http://localhost:3000/auth/callback` | OIDC callback URI |
+
+Defaults are kept in sync with the backend constants (`PlatformDefaults.AdminConsole.ClientId` and `DefaultRedirectUris`) and `appsettings.Development.json` — change them together.
 
 ---
 
-## Como rodar
+## Run
 
 ```bash
-# Instalar dependências
+# Install dependencies
 npm install
 
-# Desenvolvimento (porta 3000)
+# Development (port 3000)
 npm run dev
 
-# Build de produção
+# Production build
 npm run build
 
-# Preview do build
+# Preview the build
 npm run preview
 ```
 
 ---
 
-## Fluxo de bootstrap e autenticação
+## Bootstrap and authentication flow
 
 ```
-1. Usuário acessa a aplicação (ex.: / ou /login)
-2. loginLoader / requireAuthLoader consultam GET /v1.0/platform/status
-3. Se requiresBootstrap → /login exibe botão "Inicializar plataforma" → POST /v1.0/platform/bootstrap
-4. Após bootstrap → mesma rota exibe login OIDC
+1. The user opens the app (e.g., / or /login)
+2. loginLoader / requireAuthLoader call GET /v1.0/platform/status
+3. If requiresBootstrap → /login shows "Initialize platform" → POST /v1.0/platform/bootstrap
+4. After bootstrap → the same route shows the OIDC login
 ```
 
-### OIDC (após bootstrap)
+### OIDC (after bootstrap)
 
 ```
-1. Usuário acessa rota protegida
-2. requireAuthLoader verifica status e localStorage (idp.auth.session)
-3. Se sem sessão → redirect /login?returnUrl=...
+1. The user navigates to a protected route
+2. requireAuthLoader checks the status and the local storage (idp.auth.session)
+3. If there is no session → redirect to /login?returnUrl=...
 4. LoginPage → redirectToOidcLogin()
-5. Browser navega para GET /connect/authorize (PKCE, state em sessionStorage)
-6. Backend redireciona para /account/login (formulário email + senha)
-7. Usuário faz login local → cookie de sessão
-8. Backend completa o authorize → redirect /auth/callback?code=...&state=...
-9. AuthCallbackPage valida state, POST /connect/token (code + verifier)
-10. Tokens salvos em localStorage (idp.auth.session)
-11. Redirect para a rota original (returnUrl)
+5. Browser navigates to GET /connect/authorize (PKCE, state in sessionStorage)
+6. Backend redirects to /account/login (email + password form)
+7. The user signs in locally → session cookie
+8. Backend completes the authorize → redirect to /auth/callback?code=...&state=...
+9. AuthCallbackPage validates the state, POST /connect/token (code + verifier)
+10. Tokens saved in localStorage (idp.auth.session)
+11. Redirect to the original route (returnUrl)
 ```
 
-O refresh token é trocado automaticamente via interceptor Axios em respostas 401.
+The refresh token is rotated automatically via an Axios interceptor when a request returns 401.
 
-O logout limpa o `localStorage` e redireciona para `GET /connect/logout`.
-
----
-
-## Páginas e rotas
-
-| Rota | Componente | Auth | Descrição |
-|------|-----------|------|-----------|
-| `/login` | `LoginPage` | Público | Bootstrap (se `requiresBootstrap`) ou inicia fluxo OIDC |
-| `/auth/callback` | `AuthCallbackPage` | Público | Troca código por token |
-| `/` | `HomePage` | JWT | Dashboard com links para módulos |
-| `/profile` | `ProfilePage` | JWT | Perfil e memberships do usuário |
-| `/sessions` | `SessionsPage` | JWT | Listar e revogar sessões |
-| `/tenants` | `TenantsPage` | JWT | CRUD de tenants, convites, switch de tenant |
-| `/memberships` | `MembershipsPage` | JWT | Memberships do tenant ativo |
-| `/tenant-roles` | `TenantRolesPage` | JWT | Papéis configuráveis do tenant |
-| `/applications` | `ApplicationsPage` | JWT | Listar e criar applications OAuth |
-| `/applications/:id` | `ApplicationDetailPage` | JWT | Detalhes, clients OAuth, provisioning |
-| `/identity-providers` | `IdentityProvidersPage` | JWT + plat_admin | CRUD de provedores de identidade |
-| `/accept-invite` | `AcceptInvitePage` | JWT | Aceitar convite de tenant via token |
-| `/audit-logs` | `AuditLogsPage` | JWT | Logs de auditoria com filtros |
-| `/jwks` | `JwksPage` | JWT | Exibir JWKS da plataforma |
+Logout clears `localStorage` and redirects to `GET /connect/logout`.
 
 ---
 
-## Estrutura de pastas
+## Pages and routes
+
+| Route | Component | Auth | Description |
+|-------|-----------|------|-------------|
+| `/login` | `LoginPage` | Public | Bootstrap (when `requiresBootstrap`) or kicks off the OIDC flow |
+| `/auth/callback` | `AuthCallbackPage` | Public | Exchanges code for tokens |
+| `/` | `HomePage` | JWT | Dashboard with module links |
+| `/profile` | `ProfilePage` | JWT | User profile and memberships |
+| `/sessions` | `SessionsPage` | JWT | List and revoke sessions |
+| `/tenants` | `TenantsPage` | JWT | Tenant CRUD, invites, tenant switching |
+| `/memberships` | `MembershipsPage` | JWT | Memberships of the active tenant |
+| `/tenant-roles` | `TenantRolesPage` | JWT | Tenant-scoped role configuration |
+| `/applications` | `ApplicationsPage` | JWT | List and create OAuth applications |
+| `/applications/:id` | `ApplicationDetailPage` | JWT | Details, OAuth clients, provisioning |
+| `/identity-providers` | `IdentityProvidersPage` | JWT + plat_admin | CRUD of identity providers |
+| `/accept-invite` | `AcceptInvitePage` | JWT | Accept a tenant invite by token |
+| `/audit-logs` | `AuditLogsPage` | JWT | Audit logs with filters |
+| `/jwks` | `JwksPage` | JWT | Display the platform's JWKS |
+
+---
+
+## Folder structure
 
 ```
 src/
 ├── components/
-│   ├── AppLayout.tsx       Shell principal com sidebar e topbar
-│   ├── AuthLayout.tsx      Layout centralizado para telas de auth
-│   └── ui/                 Componentes reutilizáveis (DataTable, PageHeader, etc.)
+│   ├── AppLayout.tsx       Main shell with sidebar and topbar
+│   ├── AuthLayout.tsx      Centered layout for auth screens
+│   └── ui/                 Reusable components (DataTable, PageHeader, etc.)
 ├── config/
-│   ├── axios.ts            Instâncias Axios (api / publicApi) + interceptor 401
-│   ├── env.ts              Leitura e validação de variáveis de ambiente
-│   └── index.ts            Re-exportações
+│   ├── axios.ts            Axios instances (api / publicApi) + 401 interceptor
+│   ├── env.ts              Env variable loader with built-in defaults
+│   └── index.ts            Re-exports
 ├── contexts/
-│   ├── AuthContext.tsx      Estado de autenticação (JWT claims, platform/tenant roles)
-│   ├── TenantContext.tsx    Tenant ativo selecionado (localStorage)
-│   └── ThemeModeContext.tsx Tema claro/escuro
-├── pages/                  Um componente por rota
+│   ├── AuthContext.tsx      Authentication state (JWT claims, platform/tenant roles)
+│   ├── TenantContext.tsx    Currently selected tenant (localStorage)
+│   └── ThemeModeContext.tsx Light/dark theme
+├── pages/                  One component per route
 ├── routes/
 │   └── loaders.ts          Route loaders (requireAuthLoader, loginLoader)
-├── routes.tsx              Definição de todas as rotas com React Router
-├── services/               Funções de chamada à API por recurso
-├── theme/                  Tokens e createAppTheme (MUI)
-├── types/                  Interfaces TypeScript alinhadas ao OpenAPI
+├── routes.tsx              All routes defined with React Router
+├── services/               API call functions per resource
+├── theme/                  Tokens and createAppTheme (MUI)
+├── types/                  TypeScript interfaces aligned with the OpenAPI document
 └── utils/
-    ├── authStorage.ts      Leitura/escrita de sessão no localStorage
-    ├── apiError.ts         Extração de mensagem de erro da API
-    ├── apiMappers.ts       Normalização de respostas da API (camelCase)
-    ├── pkce.ts             Geração de code_verifier e code_challenge
-    └── jwt.ts              Decodificação de JWT (sem validação)
+    ├── authStorage.ts      Read/write session in localStorage
+    ├── apiError.ts         Extract API error messages
+    ├── apiMappers.ts       Normalize API responses (camelCase)
+    ├── pkce.ts             Generate code_verifier and code_challenge
+    └── jwt.ts              JWT decoding (no validation)
 ```
 
 ---
 
-## Serviços da API
+## API services
 
-| Arquivo | Funções |
-|---------|---------|
+| File | Functions |
+|------|-----------|
 | `platformService.ts` | `getPlatformStatus`, `bootstrapPlatform` |
 | `authService.ts` | `subscribeTenant`, `switchTenant`, `listSessions`, `revokeSession` |
 | `usersService.ts` | `getMe`, `updateMe`, `listMyMemberships` |
@@ -159,38 +165,38 @@ src/
 | `tenantRolesService.ts` | `listTenantRoles`, `createTenantRole`, `updateTenantRole` |
 | `applicationsService.ts` | `createApplication`, `listApplications`, `getApplicationById`, `createApplicationClient`, `provisionApplicationTenant` |
 | `identityProvidersService.ts` | `listIdentityProviders`, `addIdentityProvider`, `updateIdentityProvider`, `enableIdentityProvider`, `disableIdentityProvider` |
-| `auditLogsService.ts` | `listAuditLogs` (com filtros) |
+| `auditLogsService.ts` | `listAuditLogs` (with filters) |
 | `wellKnownService.ts` | `getOpenIdConfiguration`, `getJwks` |
 | `oidcService.ts` | `redirectToOidcLogin`, `exchangeCodeForTokens`, `refreshOidcTokens`, `buildLogoutUrl` |
 
 ---
 
-## Autorização frontend
+## Frontend authorization
 
-O `AuthContext` expõe `platformRoles` (claim `prole` do JWT). Para verificar se o usuário é platform admin:
+`AuthContext` exposes `platformRoles` (the `prole` JWT claim). To check whether the user is a platform admin:
 
 ```tsx
 const { platformRoles } = useAuth()
 const isPlatformAdmin = platformRoles.includes('plat_admin')
 ```
 
-O item de navegação "Identity Providers" e a tela de criação de applications só aparecem para `plat_admin`.
+The "Identity Providers" navigation item and the application creation form are only visible to `plat_admin`.
 
-### Identity Providers — schemas `ConfigJson`
+### Identity Providers — `ConfigJson` schemas
 
-A página **Identity Providers** (`IdentityProvidersPage.tsx`) orienta o cadastro por tipo:
+The **Identity Providers** page (`IdentityProvidersPage.tsx`) guides the operator by type:
 
-| Tipo | Campos no JSON | Observação na UI |
-|------|----------------|------------------|
-| Local | nenhum obrigatório | sem `ConfigJson` |
-| Firebase | `projectId`, `webApiKey`, `serviceAccount` | guia na UI (`FirebaseConfigHelp`): **não** é o `firebaseConfig` do app Web; `serviceAccount` = arquivo `.json` da conta de serviço Admin SDK |
-| Cognito | `userPoolId`, `region`, `clientId` | aviso: login ainda não disponível |
-| Generic | `issuer`, `jwksUri`, `audience` | aviso: login ainda não disponível |
+| Type | JSON fields | UI note |
+|------|-------------|---------|
+| Local | none required | no `ConfigJson` |
+| Firebase | `projectId`, `webApiKey`, `serviceAccount` | UI guide (`FirebaseConfigHelp`): **not** the Web app `firebaseConfig`; `serviceAccount` = the Admin SDK service account `.json` file |
+| Cognito | `userPoolId`, `region`, `clientId` | notice: login not yet available |
+| Generic | `issuer`, `jwksUri`, `audience` | notice: login not yet available |
 
-Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend.
+TypeScript types that mirror the schemas live in `src/types/identityProviders.ts` (`FirebaseProviderConfig`, etc.). `LoginPage.tsx` of the admin SPA does **not** change the OIDC flow — it only redirects to the backend authorize endpoint.
 
 ---
 
 ## Swagger / OpenAPI
 
-O arquivo `swagger.json` na raiz do projeto contém a especificação OpenAPI da API atual. Serve como contrato de referência para os tipos TypeScript em `src/types/`.
+The `swagger.json` file at the root of the project contains the OpenAPI specification of the current API. It serves as a reference contract for the TypeScript types under `src/types/`.

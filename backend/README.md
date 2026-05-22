@@ -1,111 +1,117 @@
 # IdP Platform — Backend
 
-API .NET 8 que implementa um **Identity Provider (IdP)** completo: autenticação local, OIDC (authorization code + PKCE), multi-tenant, roles, aplicações OAuth e federação de provedores externos.
+[English](./README.md) | [Português](./README.pt-BR.md)
+
+A .NET 8 API that implements a full **Identity Provider (IdP)**: local authentication, OIDC (authorization code + PKCE), multi-tenancy, roles, OAuth applications, and federation with external providers.
+
+> Coding conventions and required patterns: see [../rules/backend-rules.md](../rules/backend-rules.md).
 
 ---
 
-## Arquitetura
+## Architecture
 
-A solução segue **Clean Architecture** com 4 projetos:
-
-```
-IdPPlatform.Domain          → Entidades, value objects, interfaces de repositório, regras de domínio
-IdPPlatform.Application     → Services por agregado, DTOs, requests, interfaces de serviços técnicos
-IdPPlatform.Infrastructure  → Implementações: EF Core, OIDC, email (AWS SES), serviços técnicos
-IdPPlatform.API             → Controllers ASP.NET Core, Program.cs, middlewares, views MVC (login)
-```
-
-### Services por agregado (Application layer)
-
-| Interface | Responsabilidade |
-|-----------|-----------------|
-| `IPlatformService` | Bootstrap e status da plataforma |
-| `IUserService` | Criar/atualizar usuário, listar memberships, linkar identidade externa |
-| `ITenantService` | CRUD de tenants, convites, aceitar convite |
-| `ITenantRoleService` | CRUD de papéis por tenant |
-| `IMembershipService` | Criar/revogar/atualizar memberships |
-| `IApplicationService` | CRUD de applications OAuth, criar clients, provisionar tenant |
-| `IAuditLogService` | Listagem de audit logs |
-| `IAuthService` | Switch/subscribe de tenant, gerenciar sessões |
-| `ILocalAuthenticationService` | Login local (email + BCrypt) |
-| `IIdentityProviderService` | CRUD de provedores de identidade (Local, Firebase, Cognito…) |
-
-### Fluxo de autenticação
+The solution follows **Clean Architecture** with 4 projects:
 
 ```
-POST /account/login (email + senha)
-  → SessionCookie com OidcLoginContext
+IdPPlatform.Domain          → Entities, value objects, repository interfaces, domain rules
+IdPPlatform.Application     → Services per aggregate, DTOs, requests, technical service interfaces
+IdPPlatform.Infrastructure  → Implementations: EF Core, OIDC, email (AWS SES), technical services
+IdPPlatform.API             → ASP.NET Core controllers, Program.cs, middlewares, MVC views (login)
+```
+
+### Services per aggregate (Application layer)
+
+| Interface | Responsibility |
+|-----------|----------------|
+| `IPlatformService` | Bootstrap and platform status |
+| `IUserService` | Create/update user, list memberships, link external identity |
+| `ITenantService` | Tenant CRUD, invites, accept invite |
+| `ITenantRoleService` | CRUD of tenant-scoped roles |
+| `IMembershipService` | Create/revoke/update memberships |
+| `IApplicationService` | OAuth application CRUD, create clients, tenant provisioning |
+| `IAuditLogService` | List audit logs |
+| `IAuthService` | Switch/subscribe tenant, manage sessions |
+| `ILocalAuthenticationService` | Local login (email + BCrypt) |
+| `IIdentityProviderService` | CRUD of identity providers (Local, Firebase, Cognito…) |
+
+### Authentication flow
+
+```
+POST /account/login (email + password)
+  → SessionCookie with OidcLoginContext
 
 GET /connect/authorize (PKCE)
-  → Backend valida cookie, gera authorization_code
+  → Backend validates the cookie and issues an authorization_code
 
 POST /connect/token (code + verifier)
   → JWT RS256 (access_token + id_token + refresh_token)
 
-Bearer JWT → controllers v1 protegidos
+Bearer JWT → protected v1 controllers
 ```
 
 ---
 
-## Pré-requisitos
+## Prerequisites
 
-| Ferramenta | Versão |
-|------------|--------|
+| Tool | Version |
+|------|---------|
 | .NET SDK | 8.0+ |
 | PostgreSQL | 14+ |
-| Redis | opcional (cache de tenant; sem ele usa in-memory) |
+| Redis | optional (tenant cache; falls back to in-memory) |
 | `dotnet-ef` | `dotnet tool install --global dotnet-ef` |
 
 ---
 
-## Configuração
+## Configuration
 
-Todas as configurações ficam em `IdPPlatform.API/appsettings.json` (template) e `appsettings.Development.json` (valores de desenvolvimento local).
+All configuration lives in `IdPPlatform.API/appsettings.json` (template) and `appsettings.Development.json` (local development values).
 
-### Seções do appsettings
+### Appsettings sections
 
-| Seção | Chaves principais | Descrição |
-|-------|------------------|-----------|
-| `Database` | `ConnectionString` | String de conexão PostgreSQL |
-| `Jwt` | `Issuer`, `Audience`, `SigningKeyPath`, `SigningKeyPem`, `KeyId`, `AccessTokenMinutes`, `RefreshTokenDays` | Configuração de tokens RS256 |
-| `Bootstrap` | `AdminEmail`, `AdminPassword`, `AdminDisplayName` | Credenciais do admin raiz (ver abaixo) |
-| `Session` | `MaxSessionsPerUser` | Máximo de sessões simultâneas |
-| `RateLimit` | `BootstrapPermitLimit`, `BootstrapWindowMinutes` | Rate limit do endpoint de bootstrap |
-| `Invite` | `ExpirationHours` | Validade dos convites |
-| `Email` | `FromAddress`, `Region`, `AccessKeyId`, `SecretAccessKey` | AWS SES para envio de convites |
-| `Redis` | `ConnectionString`, `InstanceName`, `TenantIdentifierCacheMinutes` | Cache distribuído (opcional) |
+| Section | Main keys | Description |
+|---------|-----------|-------------|
+| `Database` | `ConnectionString` | PostgreSQL connection string |
+| `Jwt` | `Issuer`, `Audience`, `SigningKeyPath`, `SigningKeyPem`, `KeyId`, `RefreshTokenDays` | RS256 token configuration |
+| `Bootstrap` | `AdminEmail`, `AdminPassword`, `AdminDisplayName` | Root admin credentials (see below) |
+| `RateLimit` | `BootstrapPermitLimit`, `BootstrapWindowMinutes` | Bootstrap endpoint rate limit |
+| `Invite` | `ExpirationHours` | Invite expiration |
+| `Email` | `FromAddress`, `Region`, `AccessKeyId`, `SecretAccessKey` | AWS SES for invite delivery |
+| `Redis` | `ConnectionString`, `InstanceName`, `TenantIdentifierCacheMinutes` | Distributed cache (optional) |
+| `SecretProtection` | `KeyDirectoryPath`, `ApplicationName` | Data protection key ring used to encrypt IdP credentials at rest |
 
-### Variáveis de ambiente (Docker / docker-compose / `.env`)
+Every Options class is bound and validated at startup (`IValidateOptions<T>` + `ValidateOnStart()`). Misconfigured production deployments fail fast.
 
-O ASP.NET Core mapeia `Secao__Propriedade` para `Secao:Propriedade` (equivalente ao JSON aninhado). Exemplo para bootstrap:
+### Environment variables (Docker / docker-compose / `.env`)
 
-| Variável | Obrigatória | Descrição |
-|----------|-------------|-----------|
-| `Bootstrap__AdminEmail` | Sim | Email do administrador raiz |
-| `Bootstrap__AdminPassword` | Sim | Senha inicial (nunca persiste em texto) |
-| `Bootstrap__AdminDisplayName` | Não | Nome de exibição (padrão: parte do email) |
+ASP.NET Core maps `Section__Property` to `Section:Property` (equivalent to nested JSON). Example for bootstrap:
 
-Outras chaves comuns: `Database__ConnectionString`, `Jwt__Issuer`, `Jwt__SigningKeyPem`, `Redis__ConnectionString`, `Email__FromAddress`, etc.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `Bootstrap__AdminEmail` | Yes | Root admin email |
+| `Bootstrap__AdminPassword` | Yes | Initial password (never stored in plain text) |
+| `Bootstrap__AdminDisplayName` | No | Display name (defaults to the local part of the email) |
 
-Em desenvolvimento local, a seção `Bootstrap` no `appsettings.Development.json` é suficiente.
+Other common keys: `Database__ConnectionString`, `Jwt__Issuer`, `Jwt__SigningKeyPem`, `Redis__ConnectionString`, `Email__FromAddress`, `SecretProtection__KeyDirectoryPath`, etc.
 
-> Após o bootstrap, remova `Bootstrap__*` do ambiente em produção. Elas só são necessárias na primeira inicialização.
+In local development the `Bootstrap` section in `appsettings.Development.json` is sufficient.
 
-### Chave RSA para OIDC
+> After bootstrap, remove `Bootstrap__*` from the production environment. They are only needed on the first run.
 
-O JWT é assinado com RSA (RS256). Gere a chave antes de iniciar.
+### RSA key for OIDC
 
-**Opção recomendada — projeto `GenerateOidcKey` na solução:**
+JWTs are signed with RSA (RS256). Generate the key before starting.
+
+**Recommended option — the `GenerateOidcKey` tool in the solution:**
 
 ```bash
 cd backend
 dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
-# Grava IdPPlatform.API/keys/oidc-signing.pem por padrão
+# Writes IdPPlatform.API/keys/oidc-signing.pem by default
 ```
 
-Caminho customizado: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj -- caminho/para/chave.pem`
+Custom path: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj -- path/to/key.pem`
 
-**Alternativa com OpenSSL:**
+**OpenSSL alternative:**
 
 ```bash
 cd backend/IdPPlatform.API
@@ -113,52 +119,66 @@ mkdir keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
 ```
 
-Configure `Jwt:SigningKeyPath` (ou env `Jwt__SigningKeyPath`) com o caminho do arquivo, ou `Jwt:SigningKeyPem` / `Jwt__SigningKeyPem` com o conteúdo PEM inline (útil em containers).
+Configure `Jwt:SigningKeyPath` (or `Jwt__SigningKeyPath`) with the file path, or `Jwt:SigningKeyPem` / `Jwt__SigningKeyPem` with the inline PEM contents (useful in containers).
 
 ---
 
-## Como rodar localmente
+## Secret protection at rest
+
+Identity provider configuration JSON (`IdentityProvider.ConfigJson`) frequently contains secrets (Firebase `ServiceAccount`, `WebApiKey`, etc.). These sensitive top-level paths are encrypted before persistence using ASP.NET Core Data Protection through `ISecretProtector` and `IdentityProviderConfigCipher`.
+
+- Plain-text payloads are still readable at runtime; they are re-encrypted lazily on the next write.
+- Encrypted values are tagged with the prefix `enc:v1:`.
+- The keyring is persisted under `SecretProtection:KeyDirectoryPath` (default `keys/data-protection`). **Lose those keys and previously stored secrets become unreadable** — back them up alongside the database.
+
+`IdentityProviderDto` deliberately omits `ConfigJson`; secrets are never returned to API consumers.
+
+---
+
+## Run locally
 
 ```bash
 cd backend
 
-# 1. Restaurar dependências
+# 1. Restore dependencies
 dotnet restore
 
-# 2. Aplicar migration (banco deve existir)
+# 2. Apply migrations (the database must already exist)
 dotnet ef database update \
   --project IdPPlatform.Infrastructure \
   --startup-project IdPPlatform.API
 
-# 3. Iniciar a API
+# 3. Start the API
 dotnet run --project IdPPlatform.API
 ```
 
-A API sobe em `http://localhost:5000`. Swagger disponível em `/swagger` nos ambientes Development/Staging.
+The API runs at `http://localhost:5000`. Swagger is available under `/swagger` in Development/Staging.
 
 ---
 
 ## Bootstrap
 
-O bootstrap inicializa a plataforma pela primeira vez (executado uma única vez).
+Bootstrap initializes the platform for the first time (executed only once).
 
-**Fluxo recomendado:** com a API e o frontend rodando, acesse `http://localhost:3000`. Se `GET /v1.0/platform/status` indicar `requiresBootstrap: true`, a tela de login exibe o botão **Inicializar plataforma**, que chama `POST /v1.0/platform/bootstrap` (sem body; credenciais vêm só da configuração do backend).
+**Recommended flow:** with the API and the frontend running, open `http://localhost:3000`. If `GET /v1.0/platform/status` reports `requiresBootstrap: true`, the login screen shows the **Initialize platform** button, which calls `POST /v1.0/platform/bootstrap` (no body; credentials come from backend configuration only).
 
-**Alternativa (ops / CI):**
+**Alternative (ops / CI):**
 
 ```bash
 curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 # { "isConfigured": true, "rootUserId": "...", "oauthClientId": "platform-admin-web" }
 ```
 
-O bootstrap cria automaticamente:
-- Usuário admin raiz com credencial local (BCrypt)
-- Role de plataforma `plat_admin` atribuída ao admin
-- Identity Provider `local` habilitado
-- Application `platform-admin` + Client `platform-admin-web` (fixos, não editáveis via API)
-- Registro de `PlatformConfiguration` marcando o sistema como bootstrapped
+Bootstrap automatically creates:
 
-Verifique o status antes:
+- Root admin user with a local credential (BCrypt)
+- `plat_admin` platform role assigned to the admin
+- `local` Identity Provider enabled
+- Application `platform-admin` + Client `platform-admin-web` (fixed, not editable via API)
+- A `PlatformConfiguration` row marking the system as bootstrapped
+
+Check the status first:
+
 ```bash
 curl http://localhost:5000/v1.0/platform/status
 # { "isConfigured": false, "requiresBootstrap": true, "oauthClientId": null }
@@ -166,115 +186,121 @@ curl http://localhost:5000/v1.0/platform/status
 
 ---
 
-## Endpoints principais
+## Main endpoints
 
 ### Platform
-| Método | Path | Auth | Descrição |
-|--------|------|------|-----------|
-| GET | `/v1.0/platform/status` | Público | Status e se requer bootstrap |
-| POST | `/v1.0/platform/bootstrap` | Público (rate limited) | Inicialização única da plataforma |
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/v1.0/platform/status` | Public | Status and whether bootstrap is required |
+| POST | `/v1.0/platform/bootstrap` | Public (rate limited) | One-time platform initialization |
 
 ### Account / OIDC
-| Método | Path | Auth | Descrição |
-|--------|------|------|-----------|
-| GET/POST | `/account/login` | Público | Login local (cookie MVC) |
-| GET/POST | `/connect/authorize` | Cookie | Endpoint de autorização OIDC |
-| POST | `/connect/token` | Client credentials | Troca de código por token |
-| GET | `/.well-known/openid-configuration` | Público | Discovery OIDC |
-| GET | `/.well-known/jwks.json` | Público | Chaves públicas RSA |
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET/POST | `/account/login` | Public | Local login (MVC cookie) |
+| GET/POST | `/connect/authorize` | Cookie | OIDC authorization endpoint |
+| POST | `/connect/token` | Client credentials | Code-to-token exchange |
+| GET | `/.well-known/openid-configuration` | Public | OIDC discovery |
+| GET | `/.well-known/jwks.json` | Public | Public RSA keys |
 
 ### Auth (JWT)
-| Método | Path | Auth | Descrição |
-|--------|------|------|-----------|
-| POST | `/v1.0/auth/subscribe` | JWT | Onboarding SaaS (criar tenant via app OAuth) |
-| POST | `/v1.0/auth/switch-tenant` | JWT | Mudar tenant ativo na sessão |
-| GET | `/v1.0/auth/sessions` | JWT | Listar sessões ativas |
-| DELETE | `/v1.0/auth/sessions/{id}` | JWT | Revogar sessão |
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/v1.0/auth/subscribe` | JWT | SaaS onboarding (create a tenant via the OAuth app) |
+| POST | `/v1.0/auth/switch-tenant` | JWT | Switch the active tenant in the session |
+| GET | `/v1.0/auth/sessions` | JWT | List active sessions |
+| DELETE | `/v1.0/auth/sessions/{id}` | JWT | Revoke a session |
 
 ### Users
-| Método | Path | Auth | Descrição |
-|--------|------|------|-----------|
-| GET | `/v1.0/Users/me` | JWT | Perfil do usuário atual |
-| PATCH | `/v1.0/Users/me` | JWT | Atualizar perfil |
-| GET | `/v1.0/Users/me/memberships` | JWT | Memberships do usuário |
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/v1.0/Users/me` | JWT | Current user profile |
+| PATCH | `/v1.0/Users/me` | JWT | Update profile |
+| GET | `/v1.0/Users/me/memberships` | JWT | User memberships |
 
 ### Identity Providers
-| Método | Path | Auth | Descrição |
-|--------|------|------|-----------|
-| GET | `/v1.0/IdentityProviders` | JWT + plat_admin | Listar IdPs |
-| POST | `/v1.0/IdentityProviders` | JWT + plat_admin | Adicionar IdP |
-| PATCH | `/v1.0/IdentityProviders/{id}` | JWT + plat_admin | Atualizar IdP |
-| POST | `/v1.0/IdentityProviders/{id}/enable` | JWT + plat_admin | Habilitar |
-| POST | `/v1.0/IdentityProviders/{id}/disable` | JWT + plat_admin | Desabilitar |
 
-#### Identity Providers federados
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/v1.0/IdentityProviders` | JWT + plat_admin | List IdPs |
+| POST | `/v1.0/IdentityProviders` | JWT + plat_admin | Add IdP (ConfigJson sensitive fields are encrypted on save) |
+| PATCH | `/v1.0/IdentityProviders/{id}` | JWT + plat_admin | Update IdP |
+| POST | `/v1.0/IdentityProviders/{id}/enable` | JWT + plat_admin | Enable |
+| POST | `/v1.0/IdentityProviders/{id}/disable` | JWT + plat_admin | Disable |
 
-A configuração de cada IdP externo fica em `ConfigJson` no banco (cadastro via painel). **Não há seção `Firebase` em `appsettings`.**
+#### Federated identity providers
 
-| Tipo | `ConfigJson` (campos principais) | Login em `/account/login` |
-|------|----------------------------------|---------------------------|
-| `Local` | opcional / vazio | email + senha |
-| `Firebase` | `projectId`, `webApiKey`, `authDomain` (opcional), `serviceAccount` | botão Google (Firebase JS + `POST /account/external-login`) |
-| `Cognito` | `userPoolId`, `region`, `clientId` | cadastro validado; login ainda não implementado |
-| `Generic` | `issuer`, `jwksUri`, `audience` | cadastro validado; login ainda não implementado |
+Each external IdP's configuration lives in the database (`ConfigJson`), entered through the admin console. **There is no `Firebase` section in appsettings.**
 
-Fluxo OIDC: o painel admin inicia `connect/authorize` → redirect para `/account/login` → métodos exibidos conforme IdPs **habilitados** → cookie de sessão → retorno ao cliente.
+| Type | `ConfigJson` (main fields) | Login on `/account/login` |
+|------|-----------------------------|---------------------------|
+| `Local` | optional / empty | email + password |
+| `Firebase` | `projectId`, `webApiKey`, `authDomain` (optional), `serviceAccount` | Google button (Firebase JS + `POST /account/external-login`) |
+| `Cognito` | `userPoolId`, `region`, `clientId` | registration validated; login not yet implemented |
+| `Generic` | `issuer`, `jwksUri`, `audience` | registration validated; login not yet implemented |
 
-**Firebase / Google:** no [Firebase Console](https://console.firebase.google.com/), no mesmo `projectId` do `ConfigJson`, ative **Authentication** e o provedor **Google**. A `serviceAccount` é o JSON da conta de serviço do Firebase Admin (verificação do `idToken` no servidor).
+OIDC flow: the admin console kicks off `connect/authorize` → redirect to `/account/login` → methods displayed according to the **enabled** IdPs → session cookie → return to the client.
 
-O `ExternalIdentity.Provider` gravado no banco usa o **alias** do registro (ex.: `firebase`), não uma string fixa global.
+**Firebase / Google:** in the [Firebase Console](https://console.firebase.google.com/), under the same `projectId` from the `ConfigJson`, enable **Authentication** and the **Google** provider. `serviceAccount` is the Firebase Admin service account JSON (used to verify the `idToken` on the server).
+
+The stored `ExternalIdentity.Provider` uses the **alias** of the record (e.g., `firebase`), not a hardcoded global string.
 
 ### Tenants, Memberships, Applications, Audit Logs
-Ver `frontend/swagger.json` para a lista completa de endpoints.
+
+See `frontend/swagger.json` for the complete endpoint list.
 
 ---
 
-## Autorização
+## Authorization
 
-- **Claim `prole=plat_admin`**: administrador de plataforma. Resolvida consultando `UserPlatformRole` + `PlatformRole` no banco.
-- **Policy `PlatformAdministrator`**: protege criação de tenants, applications, gestão de IdPs.
-- **`trole`**: papéis do tenant ativo (owner, admin, member, viewer).
-- **Tenant context**: claims `tid` (tenant id) e `mid` (membership id) no JWT.
+- **Claim `prole=plat_admin`**: platform administrator. Resolved by reading `UserPlatformRole` + `PlatformRole` from the database.
+- **Policy `PlatformAdministrator`**: protects tenant/application/IdP management.
+- **`trole`**: roles of the active tenant (owner, admin, member, viewer).
+- **Tenant context**: `tid` (tenant id) and `mid` (membership id) claims in the JWT.
 
 ---
 
-## Entidades de domínio
+## Domain entities
 
-| Entidade | Tabela | Descrição |
-|----------|--------|-----------|
-| `User` | `users` | Usuário da plataforma |
-| `UserCredential` | `user_credentials` | Credencial local BCrypt |
-| `UserPlatformRole` | `user_platform_roles` | Atribuição de role de plataforma |
-| `PlatformRole` | `platform_roles` | Papéis globais (ex: `plat_admin`) |
-| `ExternalIdentity` | `external_identities` | Identidade vinculada de IdP externo |
-| `IdentityProvider` | `identity_providers` | Configuração de IdP (Local, Firebase…) |
-| `Tenant` | `tenants` | Organização / espaço isolado |
-| `TenantRole` | `tenant_roles` | Papéis configuráveis por tenant |
-| `TenantMembership` | `tenant_memberships` | Vínculo usuário ↔ tenant |
-| `Application` | `applications` | Aplicação OAuth registrada |
-| `ApplicationClient` | `application_clients` | Client OAuth (public/confidential) |
-| `ApplicationTenant` | `application_tenants` | Vínculo app ↔ tenant (provisioning) |
-| `AuthSession` | `auth_sessions` | Sessão ativa (vincula cookie a JWT) |
-| `AuditLog` | `audit_logs` | Registro de eventos por tenant |
-| `TenantInvite` | `tenant_invites` | Convite de membro para tenant |
+| Entity | Table | Description |
+|--------|-------|-------------|
+| `User` | `users` | Platform user |
+| `UserCredential` | `user_credentials` | Local BCrypt credential |
+| `UserPlatformRole` | `user_platform_roles` | Platform role assignment |
+| `PlatformRole` | `platform_roles` | Global roles (e.g., `plat_admin`) |
+| `ExternalIdentity` | `external_identities` | External IdP identity link |
+| `IdentityProvider` | `identity_providers` | IdP configuration (Local, Firebase…) |
+| `Tenant` | `tenants` | Organization / isolated space |
+| `TenantRole` | `tenant_roles` | Per-tenant configurable roles |
+| `TenantMembership` | `tenant_memberships` | User ↔ tenant link |
+| `Application` | `applications` | Registered OAuth application |
+| `ApplicationClient` | `application_clients` | OAuth client (public/confidential) |
+| `ApplicationTenant` | `application_tenants` | App ↔ tenant link (provisioning) |
+| `AuthSession` | `auth_sessions` | Active session (binds cookie to JWT) |
+| `AuditLog` | `audit_logs` | Per-tenant event log |
+| `TenantInvite` | `tenant_invites` | Tenant invite |
 
 ---
 
 ## Migrations
 
 ```bash
-# Gerar nova migration
-dotnet ef migrations add NomeDaMigration \
+# Create a new migration
+dotnet ef migrations add MigrationName \
   --project IdPPlatform.Infrastructure \
   --startup-project IdPPlatform.API \
   --output-dir Migrations
 
-# Aplicar ao banco
+# Apply to the database
 dotnet ef database update \
   --project IdPPlatform.Infrastructure \
   --startup-project IdPPlatform.API
 
-# Remover última migration (não aplicada)
+# Remove the last (unapplied) migration
 dotnet ef migrations remove \
   --project IdPPlatform.Infrastructure \
   --startup-project IdPPlatform.API
@@ -282,39 +308,42 @@ dotnet ef migrations remove \
 
 ---
 
-## Estrutura do projeto
+## Project structure
 
 ```
 IdPPlatform.API/
-├── Controllers/         Todos os controllers REST + MVC (Account, Authorization, WellKnown)
+├── Controllers/         All REST + MVC controllers (Account, Authorization, WellKnown)
 ├── Common/              Base controllers, middlewares, OidcLoginContext
-├── Views/Account/       Login.cshtml (formulário local)
-├── appsettings.json     Template de configuração
+├── Views/Account/       Login.cshtml (local form)
+├── appsettings.json     Configuration template
 └── Program.cs           Startup (DI, OIDC, policies, rate limiting)
 
 IdPPlatform.Application/
-├── Services/            Interfaces e DTOs por agregado
+├── Services/            Interfaces and DTOs per aggregate
 │   ├── AppService/      IApplicationService
 │   ├── AuditLog/        IAuditLogService
-│   ├── Auth/            IAuthService, IExternalLoginService, DTOs OIDC
-│   ├── IdentityProvider/IIdentityProviderService
+│   ├── Auth/            IAuthService, IExternalLoginService, OIDC DTOs
+│   ├── IdentityProvider/IIdentityProviderService, IIdentityProviderConfigCipher
 │   ├── LocalAuthentication/ ILocalAuthenticationService
 │   ├── Membership/      IMembershipService
-│   ├── Oidc/            IOidcTokenService, IOidcClaimsService, etc.
+│   ├── Oidc/            IOidcTokenService, IOidcClaimsService, ApplicationClientValidationContext
 │   ├── Platform/        IPlatformService
+│   ├── Security/        ISecretProtector
 │   ├── Tenant/          ITenantService
 │   ├── TenantRoles/     ITenantRoleService
 │   └── Users/           IUserService
 ├── Common/              PagedRequest, PagedResult, ApplicationClientListFields
-└── Exceptions/          ApplicationErrorMessages (mensagens estáticas)
+└── Exceptions/          ApplicationErrorMessages (static messages)
 
 IdPPlatform.Infrastructure/
-├── Configurations/      JwtOptions, BootstrapOptions, DatabaseOptions, etc.
-├── Extensions/          AddInfrastructure, AddAggregateServices, AddRepositories, AddServices
+├── Configurations/      JwtOptions, BootstrapOptions, DatabaseOptions, SecretProtectionOptions, validators
+├── Extensions/          AddInfrastructure, AddAggregateServices, AddRepositories, AddServices, AddSecretProtection
 ├── Migrations/          FirstMigration
 ├── Persistence/
-│   ├── Configurations/  EF FluentAPI por entidade
-│   ├── Repositories/    Implementações dos repositórios
+│   ├── Configurations/  EF Fluent API per entity
+│   ├── Repositories/    Repository implementations
 │   └── ApplicationDbContext.cs
-└── Services/            Implementações de todos os services
+└── Services/
+    ├── Security/        DataProtectionSecretProtector
+    └── ...              All other service implementations
 ```

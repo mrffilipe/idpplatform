@@ -3,6 +3,7 @@ using System.Text.Json;
 using IdPPlatform.API.Common;
 using IdPPlatform.API.Models;
 using IdPPlatform.Application.Services.Auth;
+using IdPPlatform.Application.Services.IdentityProvider;
 using IdPPlatform.Application.Services.LocalAuthentication;
 using LocalLoginResult = IdPPlatform.Application.Services.LocalAuthentication.LocalLoginResult;
 using IdPPlatform.Application.Services.UnitOfWork;
@@ -25,6 +26,7 @@ public sealed class AccountController : Controller
     private readonly ILocalAuthenticationService _localAuth;
     private readonly IExternalLoginService _externalLogin;
     private readonly IIdentityProviderRepository _identityProviders;
+    private readonly IIdentityProviderConfigCipher _configCipher;
     private readonly IAuthSessionRepository _sessions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtOptions _jwtOptions;
@@ -33,6 +35,7 @@ public sealed class AccountController : Controller
         ILocalAuthenticationService localAuth,
         IExternalLoginService externalLogin,
         IIdentityProviderRepository identityProviders,
+        IIdentityProviderConfigCipher configCipher,
         IAuthSessionRepository sessions,
         IUnitOfWork unitOfWork,
         IOptions<JwtOptions> jwtOptions)
@@ -40,6 +43,7 @@ public sealed class AccountController : Controller
         _localAuth = localAuth;
         _externalLogin = externalLogin;
         _identityProviders = identityProviders;
+        _configCipher = configCipher;
         _sessions = sessions;
         _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
@@ -62,7 +66,7 @@ public sealed class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            ModelState.AddModelError(string.Empty, "Email e senha são obrigatórios.");
+            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.EmailAndPasswordRequired);
             return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
         }
 
@@ -72,7 +76,7 @@ public sealed class AccountController : Controller
 
         if (login is null)
         {
-            ModelState.AddModelError(string.Empty, "Email ou senha inválidos.");
+            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.InvalidEmailOrPassword);
             return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
         }
 
@@ -89,7 +93,7 @@ public sealed class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(providerAlias) || string.IsNullOrWhiteSpace(idToken))
         {
-            ModelState.AddModelError(string.Empty, "Provedor ou token inválido.");
+            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.InvalidProviderOrToken);
             return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
         }
 
@@ -186,11 +190,11 @@ public sealed class AccountController : Controller
         };
     }
 
-    private static FederatedProviderViewModel MapFederatedProvider(Domain.Entities.IdentityProvider provider)
+    private FederatedProviderViewModel MapFederatedProvider(Domain.Entities.IdentityProvider provider)
     {
         IReadOnlyDictionary<string, string>? clientConfig = provider.ProviderType switch
         {
-            IdentityProviderType.Firebase => BuildFirebaseClientConfig(provider.ConfigJson),
+            IdentityProviderType.Firebase => BuildFirebaseClientConfig(_configCipher.Decrypt(provider.ConfigJson)),
             _ => null
         };
 

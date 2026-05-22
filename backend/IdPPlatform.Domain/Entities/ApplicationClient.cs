@@ -17,8 +17,8 @@ public class ApplicationClient : BaseEntity
     public int AccessTokenTtlSeconds { get; private set; }
 
     /// <summary>
-    /// Indica que este client é gerido pela plataforma e não pode ser editado ou removido por API.
-    /// Exemplo: o client do admin console criado automaticamente no bootstrap.
+    /// Indicates that this client is managed by the platform and cannot be edited or removed via API.
+    /// Example: the admin console client created automatically during bootstrap.
     /// </summary>
     public bool IsSystem { get; private set; }
 

@@ -1,40 +1,42 @@
 # Getting Started — IdP Platform
 
-Guia completo para configurar e rodar o IdP Platform do zero em ambiente de desenvolvimento local.
+[English](./GETTING_STARTED.md) | [Português](./GETTING_STARTED.pt-BR.md)
+
+Complete guide to configure and run the IdP Platform from scratch in a local development environment.
 
 ---
 
-## 1. Pré-requisitos
+## 1. Prerequisites
 
-Instale antes de continuar:
+Install before continuing:
 
-| Ferramenta | Como instalar | Versão mínima |
-|------------|---------------|---------------|
+| Tool | How to install | Minimum version |
+|------|----------------|-----------------|
 | .NET SDK | [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0) | 8.0 |
-| Node.js | [nodejs.org](https://nodejs.org/) | LTS atual |
+| Node.js | [nodejs.org](https://nodejs.org/) | Current LTS |
 | PostgreSQL | [postgresql.org](https://www.postgresql.org/download/) | 14 |
-| Redis | [redis.io](https://redis.io/downloads/) | Opcional (in-memory em dev) |
+| Redis | [redis.io](https://redis.io/downloads/) | Optional (in-memory cache fallback in dev) |
 | dotnet-ef (CLI) | `dotnet tool install --global dotnet-ef` | 8.x |
-| openssl | Incluso no macOS/Linux; Windows: Git Bash ou scoop | Qualquer |
+| openssl | Bundled with macOS/Linux; Windows: Git Bash or scoop | Any |
 
-Clone o repositório:
+Clone the repository:
 
 ```bash
-git clone <url-do-repo>
+git clone <repo-url>
 cd idpplatformproject
 ```
 
 ---
 
-## 2. Configurar o banco de dados
+## 2. Configure the database
 
-Crie um banco PostgreSQL para o projeto:
+Create a PostgreSQL database for the project:
 
 ```sql
 CREATE DATABASE idpplatform_db;
 ```
 
-Ou via linha de comando:
+Or via the command line:
 
 ```bash
 createdb idpplatform_db
@@ -42,32 +44,32 @@ createdb idpplatform_db
 
 ---
 
-## 3. Configurar o backend
+## 3. Configure the backend
 
-### 3.1 Editar appsettings de desenvolvimento
+### 3.1 Edit the development appsettings
 
-No arquivo `backend/IdPPlatform.API/appsettings.Development.json`, ajuste a string de conexão:
+In `backend/IdPPlatform.API/appsettings.Development.json` update the connection string:
 
 ```json
 {
   "Database": {
-    "ConnectionString": "Host=localhost;Port=5432;Database=idpplatform_db;Username=SEU_USUARIO;Password=SUA_SENHA"
+    "ConnectionString": "Host=localhost;Port=5432;Database=idpplatform_db;Username=YOUR_USER;Password=YOUR_PASSWORD"
   }
 }
 ```
 
-As demais seções já têm valores padrão adequados para desenvolvimento local.
+The remaining sections already ship with safe defaults for local development.
 
-### 3.2 Gerar a chave RSA para assinar os JWTs
+### 3.2 Generate the RSA key used to sign JWTs
 
-O OIDC usa RS256 (RSA + SHA-256). A solução inclui o utilitário **GenerateOidcKey**, que grava a chave diretamente em `IdPPlatform.API/keys/oidc-signing.pem`:
+OIDC uses RS256 (RSA + SHA-256). The solution ships the **GenerateOidcKey** utility, which writes the key into `IdPPlatform.API/keys/oidc-signing.pem`:
 
 ```bash
 cd backend
 dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
 ```
 
-Alternativa com OpenSSL:
+OpenSSL alternative:
 
 ```bash
 cd backend/IdPPlatform.API
@@ -75,27 +77,27 @@ mkdir keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
 ```
 
-O appsettings.Development.json já aponta para `"SigningKeyPath": "keys/oidc-signing.pem"`. Não commite esta chave.
+`appsettings.Development.json` already points to `"SigningKeyPath": "keys/oidc-signing.pem"`. Do not commit the key.
 
-### 3.3 Configurar credenciais do admin raiz (bootstrap)
+### 3.3 Configure bootstrap admin credentials
 
-As credenciais do primeiro administrador são lidas de variáveis de ambiente **ou** da seção `Bootstrap` do appsettings.Development.json.
+The first administrator's credentials are read from environment variables **or** the `Bootstrap` section of `appsettings.Development.json`.
 
-Para desenvolvimento, a forma mais simples é editar o appsettings:
+For development, the simplest path is to edit appsettings:
 
 ```json
 {
   "Bootstrap": {
     "AdminEmail": "admin@localhost",
-    "AdminPassword": "SuaSenhaSegura@123",
+    "AdminPassword": "YourSecurePassword@123",
     "AdminDisplayName": "Platform Admin"
   }
 }
 ```
 
-> Em produção ou Docker, use variáveis de ambiente no formato `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`, `Bootstrap__AdminDisplayName` (o `__` representa o aninhamento JSON) e **nunca** coloque credenciais reais no appsettings commitado.
+> In production or Docker, use environment variables in the `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`, `Bootstrap__AdminDisplayName` format (the `__` represents JSON nesting) and **never** commit real credentials to appsettings.
 
-### 3.4 Aplicar a migration ao banco
+### 3.4 Apply the migration to the database
 
 ```bash
 cd backend
@@ -105,36 +107,36 @@ dotnet ef database update \
   --startup-project IdPPlatform.API
 ```
 
-Isso cria todas as tabelas (`users`, `user_credentials`, `platform_roles`, `identity_providers`, `tenants`, `applications`, `application_clients`, `auth_sessions`, `audit_logs`, etc.).
+This creates every table (`users`, `user_credentials`, `platform_roles`, `identity_providers`, `tenants`, `applications`, `application_clients`, `auth_sessions`, `audit_logs`, etc.).
 
-### 3.5 Iniciar a API
+### 3.5 Start the API
 
 ```bash
 cd backend
 dotnet run --project IdPPlatform.API
 ```
 
-A API estará disponível em `http://localhost:5000`. O Swagger fica em `http://localhost:5000/swagger`.
+The API is available at `http://localhost:5000`. Swagger lives at `http://localhost:5000/swagger`.
 
-Confirme que está saudável:
+Confirm it is healthy:
 
 ```bash
 curl http://localhost:5000/v1.0/platform/status
-# Resposta esperada: { "isConfigured": false, "requiresBootstrap": true, "oauthClientId": null }
+# Expected response: { "isConfigured": false, "requiresBootstrap": true, "oauthClientId": null }
 ```
 
 ---
 
-## 4. Configurar e iniciar o frontend
+## 4. Configure and start the frontend
 
-### 4.1 Criar o arquivo .env
+### 4.1 Optionally create the .env file
 
 ```bash
 cd frontend
 cp .env.example .env
 ```
 
-O `.env.example` já tem os valores padrão para desenvolvimento local:
+`.env.example` lists the variables that the admin SPA understands; the same values are baked into `src/config/env.ts` as defaults, so the SPA also runs **without** an `.env` file in local development:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000
@@ -144,9 +146,9 @@ VITE_OAUTH_CLIENT_ID=platform-admin-web
 VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
 ```
 
-Não é necessário alterar nada para dev local.
+No edits are required for local development.
 
-### 4.2 Instalar dependências e iniciar
+### 4.2 Install dependencies and start
 
 ```bash
 cd frontend
@@ -154,92 +156,95 @@ npm install
 npm run dev
 ```
 
-O frontend estará em `http://localhost:3000`.
+The frontend runs at `http://localhost:3000`.
 
 ---
 
-## 5. Executar o bootstrap e fazer login
+## 5. Bootstrap and sign in
 
-Acesse `http://localhost:3000` (API e frontend rodando).
+Open `http://localhost:3000` (with both the API and the frontend running).
 
-### Bootstrap (primeira vez)
+### Bootstrap (first run)
 
-Se a plataforma ainda não foi inicializada, a tela em `/login` mostra **Inicializar plataforma** em vez do botão de login OIDC. Clique para executar o bootstrap (credenciais lidas do backend — seção `Bootstrap` ou env `Bootstrap__*`).
+If the platform has not been bootstrapped yet, the `/login` screen shows **Initialize platform** instead of the OIDC login button. Click it to run the bootstrap (credentials are read from the backend — `Bootstrap` section or `Bootstrap__*` env vars).
 
-O bootstrap cria, uma única vez:
-- Usuário admin com a senha configurada no appsettings/env vars
-- Role de plataforma `plat_admin` atribuída ao admin
-- Identity Provider `local` habilitado
-- Application `platform-admin` + Client OAuth `platform-admin-web` (fixos, não editáveis via API)
+The bootstrap creates, exactly once:
 
-Após sucesso, a mesma rota passa a exibir o login OIDC.
+- Admin user with the password configured in appsettings / env vars
+- Platform role `plat_admin` assigned to the admin
+- `local` Identity Provider enabled
+- Application `platform-admin` + OAuth Client `platform-admin-web` (fixed, not editable via API)
 
-**Alternativa (ops):** com a API rodando, `curl -X POST http://localhost:5000/v1.0/platform/bootstrap`.
+Once it succeeds, the same route starts showing the OIDC login.
 
-Verifique o status:
+**Ops alternative:** with the API running, `curl -X POST http://localhost:5000/v1.0/platform/bootstrap`.
+
+Check the status:
 
 ```bash
 curl http://localhost:5000/v1.0/platform/status
-# Antes: { "requiresBootstrap": true, ... }
-# Depois: { "isConfigured": true, "requiresBootstrap": false, "oauthClientId": "platform-admin-web" }
+# Before: { "requiresBootstrap": true, ... }
+# After:  { "isConfigured": true, "requiresBootstrap": false, "oauthClientId": "platform-admin-web" }
 ```
 
-> Após o bootstrap bem-sucedido em produção, remova `Bootstrap__*` do ambiente. Elas não têm mais efeito.
+> After a successful production bootstrap, remove `Bootstrap__*` from the environment. They no longer have any effect.
 
-### Login
+### Sign in
 
-1. Clique em **"Entrar na plataforma"**
-2. Você será redirecionado para `/account/login` no backend
-3. Informe o email e senha configurados no bootstrap (ex: `admin@localhost` / `SuaSenhaSegura@123`)
-4. Após autenticar, o backend redireciona para o callback OIDC
-5. O frontend salva os tokens e você acessa o painel
+1. Click **"Sign in to the platform"**
+2. You are redirected to `/account/login` on the backend
+3. Enter the email and password configured during bootstrap (e.g., `admin@localhost` / `YourSecurePassword@123`)
+4. After authentication, the backend redirects to the OIDC callback
+5. The frontend stores the tokens and opens the admin console
 
 ---
 
-## 6. Próximos passos
+## 6. Next steps
 
-### Criar um tenant
+### Create a tenant
 
-No painel, vá em **Tenants** → **Criar tenant**. Informe nome e chave única (ex: `minha-org`).
+In the admin console go to **Tenants** → **Create tenant**. Provide a name and a unique key (e.g., `my-org`).
 
-### Convidar membros
+### Invite members
 
-Dentro de um tenant, acesse **Tenants** → selecione o tenant → **Convidar membro**. Um link será enviado por e-mail (configure AWS SES em `Email.*` para envio real; em dev o convite é gerado mas não enviado).
+Inside a tenant, navigate to **Tenants** → select the tenant → **Invite member**. A link is emailed (configure AWS SES under `Email.*` for real delivery; in dev the invite is generated but not sent).
 
-### Registrar uma application OAuth
+### Register an OAuth application
 
-Vá em **Applications** → **Nova application**. Após criar, acesse os detalhes e registre um **Client OAuth** com as redirect URIs da sua aplicação consumidora.
+Go to **Applications** → **New application**. After creation, open the details and register an **OAuth Client** with your consumer application's redirect URIs.
 
-### Adicionar provedores de identidade externos (opcional)
+### Add external identity providers (optional)
 
-Como platform admin, acesse **Identity Providers** → **Adicionar IdP**. O provedor `local` (bootstrap) permanece habilitado para email/senha.
+As a platform admin, navigate to **Identity Providers** → **Add IdP**. The `local` provider (bootstrap) stays enabled for email/password.
 
-#### Firebase + Google (login federado funcional)
+Identity provider credentials (Firebase `ServiceAccount`, `WebApiKey`, etc.) are stored **encrypted at rest** using ASP.NET Core Data Protection. The plaintext values are required during creation/update only and are never returned by `GET` endpoints.
 
-O Firebase oferece **dois JSONs diferentes**. No painel IdP você monta **um terceiro formato** — só estes três campos na raiz:
+#### Firebase + Google (working federated login)
 
-| Campo | Origem no Firebase Console | Para quê |
-|-------|---------------------------|----------|
-| `projectId` | ⚙️ Configurações do projeto → **Geral** → ID do projeto | Identificar o projeto no login Google |
-| `webApiKey` | Mesma tela → **Chave da API da Web** | SDK Firebase na página `/account/login` (popup Google) |
-| `authDomain` | App Web → `firebaseConfig.authDomain` (ex.: `meu-projeto.firebaseapp.com`) | Obrigatório no SDK; se omitir no JSON, a API usa `{projectId}.firebaseapp.com` |
-| `serviceAccount` | Configurações → **Contas de serviço** → Gerar nova chave privada (arquivo `.json`) | Validar o `idToken` no servidor (Admin SDK) |
+Firebase exposes **two different JSON files**. In the admin console you build **a third format** — only these fields at the root:
 
-**Não cole** o `firebaseConfig` / `google-services.json` do app Web inteiro (objeto com `authDomain`, `storageBucket`, etc.). Se você já tem esse trecho no frontend do seu app, use só para conferir `apiKey` → `webApiKey` e o ID do projeto → `projectId`; o `serviceAccount` vem **somente** do arquivo da conta de serviço baixado.
+| Field | Source in Firebase Console | Purpose |
+|-------|---------------------------|---------|
+| `projectId` | ⚙️ Project settings → **General** → Project ID | Identify the project on Google login |
+| `webApiKey` | Same screen → **Web API key** | Firebase SDK on `/account/login` (Google popup) |
+| `authDomain` | Web app → `firebaseConfig.authDomain` (e.g., `my-project.firebaseapp.com`) | Required by the SDK; if omitted, the API uses `{projectId}.firebaseapp.com` |
+| `serviceAccount` | Settings → **Service accounts** → Generate new private key (`.json` file) | Validate the `idToken` on the server (Admin SDK) |
 
-**Modelo de ConfigJson** (substitua pelos seus valores; o objeto `serviceAccount` é o conteúdo completo do arquivo `*-firebase-adminsdk-*.json`):
+**Do not paste** the entire `firebaseConfig` / `google-services.json` from the Web app (an object with `authDomain`, `storageBucket`, etc.). If you already have that snippet in your frontend, use it only to map `apiKey` → `webApiKey` and the project ID → `projectId`; the `serviceAccount` value comes **only** from the downloaded service account file.
+
+**ConfigJson template** (replace with your own values; the `serviceAccount` object is the full content of the `*-firebase-adminsdk-*.json` file):
 
 ```json
 {
-  "projectId": "meu-projeto-firebase",
+  "projectId": "my-firebase-project",
   "webApiKey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "authDomain": "meu-projeto-firebase.firebaseapp.com",
+  "authDomain": "my-firebase-project.firebaseapp.com",
   "serviceAccount": {
     "type": "service_account",
-    "project_id": "meu-projeto-firebase",
+    "project_id": "my-firebase-project",
     "private_key_id": "...",
     "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-    "client_email": "firebase-adminsdk-xxxxx@meu-projeto-firebase.iam.gserviceaccount.com",
+    "client_email": "firebase-adminsdk-xxxxx@my-firebase-project.iam.gserviceaccount.com",
     "client_id": "...",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token"
@@ -247,96 +252,99 @@ O Firebase oferece **dois JSONs diferentes**. No painel IdP você monta **um ter
 }
 ```
 
-Passos:
+Steps:
 
-1. [Firebase Console](https://console.firebase.google.com/) → **Authentication** → **Sign-in method** → habilitar **Google**.
-2. Baixar a chave da **conta de serviço** (Admin SDK) e anotar **Project ID** + **Web API Key** (Geral).
-3. Painel admin (`http://localhost:3000`) → **Identity Providers** → **Adicionar IdP** → tipo **Firebase**, alias ex. `firebase`, cole o JSON acima → **Habilitado**.
-4. Manter IdP `local` habilitado (bootstrap).
-5. Teste: qualquer app OIDC (admin ou Pulse CRM) → redirect → `http://localhost:5000/account/login` → **Continuar com Google**.
+1. [Firebase Console](https://console.firebase.google.com/) → **Authentication** → **Sign-in method** → enable **Google**.
+2. Download the **service account** (Admin SDK) key and note the **Project ID** + **Web API key** (General).
+3. Admin console (`http://localhost:3000`) → **Identity Providers** → **Add IdP** → type **Firebase**, alias e.g. `firebase`, paste the JSON above → **Enabled**.
+4. Keep the `local` IdP enabled (from bootstrap).
+5. Test: any OIDC app (admin or Pulse CRM) → redirect → `http://localhost:5000/account/login` → **Continue with Google**.
 
-**Pulse CRM com Google:** o CRM não integra Firebase diretamente; ele redireciona para o OIDC da plataforma. Com o IdP Firebase habilitado, em `/account/login` o usuário entra com Google, volta ao CRM com `code`, faz onboarding/subscribe e usa a API normalmente. Ver `samples/pulse-crm/backend/README.md`.
+**Pulse CRM with Google:** the CRM does not integrate Firebase directly; it redirects to the platform OIDC. With the Firebase IdP enabled, on `/account/login` the user signs in with Google, returns to the CRM with a `code`, completes onboarding/subscribe, and uses the API normally. See `samples/pulse-crm/backend/README.md`.
 
-**Cognito / Genérico:** cadastro com `ConfigJson` válido; login na página `/account/login` ainda não implementado.
+**Cognito / Generic:** registration with a valid `ConfigJson` works; sign-in on the `/account/login` page is not implemented yet.
 
-### Integrar uma aplicação consumidora
+### Integrate a consumer application
 
-1. Registre uma **Application** e um **Client OAuth** no painel (redirect URIs da sua app).
-2. Use a discovery URL: `http://localhost:5000/.well-known/openid-configuration` (em produção, substitua pelo host público da API).
-3. Implemente authorization code + PKCE no seu cliente (SPA, backend, etc.).
+1. Register an **Application** and an **OAuth Client** in the admin console (your app's redirect URIs).
+2. Use the discovery URL: `http://localhost:5000/.well-known/openid-configuration` (in production replace it with the public host of the API).
+3. Implement authorization code + PKCE in your client (SPA, backend, etc.).
 
 ---
 
-## 7. Configuração para produção
+## 7. Production configuration
 
-### Variáveis de ambiente críticas
+### Critical environment variables
 
-| Variável de ambiente (`__`) | Produção |
-|-----------------------------|----------|
-| `Database__ConnectionString` | String de conexão ao banco gerenciado (RDS, Cloud SQL, etc.) |
-| `Jwt__SigningKeyPem` | Conteúdo PEM da chave privada RSA (inline, sem arquivo) |
-| `Jwt__Issuer` | URL pública do backend (ex: `https://auth.meusite.com`) |
-| `Bootstrap__AdminEmail` | Apenas no primeiro deploy; remover após bootstrap |
-| `Bootstrap__AdminPassword` | Apenas no primeiro deploy; remover após bootstrap |
-| `Bootstrap__AdminDisplayName` | Opcional no primeiro deploy |
-| `Email__FromAddress`, `Email__Region`, etc. | Configuração AWS SES para convites |
-| `Redis__ConnectionString` | Cache distribuído (ElastiCache, Redis Cloud, etc.) |
+| Environment variable (`__`) | Production |
+|-----------------------------|------------|
+| `Database__ConnectionString` | Managed database connection string (RDS, Cloud SQL, etc.) |
+| `Jwt__SigningKeyPem` | PEM contents of the RSA private key (inline, no file) |
+| `Jwt__Issuer` | Public backend URL (e.g., `https://auth.mysite.com`) |
+| `Bootstrap__AdminEmail` | Only on the first deploy; remove after bootstrap |
+| `Bootstrap__AdminPassword` | Only on the first deploy; remove after bootstrap |
+| `Bootstrap__AdminDisplayName` | Optional on the first deploy |
+| `Email__FromAddress`, `Email__Region`, etc. | AWS SES configuration for invites |
+| `Redis__ConnectionString` | Distributed cache (ElastiCache, Redis Cloud, etc.) |
+| `SecretProtection__KeyDirectoryPath` | Persistent directory for the data protection key ring (must survive restarts and be backed up) |
+| `SecretProtection__ApplicationName` | Logical name for key isolation (defaults to `IdPPlatform`) |
+| `VITE_API_BASE_URL` | Public API URL (during the frontend build) |
+| `VITE_OAUTH_REDIRECT_URI` | Public frontend OIDC callback URL |
 
-No `appsettings.json` de produção, o equivalente usa `:` (ex.: `Database:ConnectionString`).
-| `VITE_API_BASE_URL` | URL pública da API (durante o build do frontend) |
-| `VITE_OAUTH_REDIRECT_URI` | URL pública do callback OIDC do frontend |
+In a production `appsettings.json`, use `:` instead (e.g., `Database:ConnectionString`).
 
-### Build do frontend para produção
+### Frontend production build
 
 ```bash
 cd frontend
-# Configure as variáveis VITE_* antes do build
+# Configure the VITE_* variables before building (or rely on the defaults in src/config/env.ts)
 npm run build
-# Servir a pasta dist/ com nginx, Cloudflare Pages, etc.
+# Serve the dist/ folder with nginx, Cloudflare Pages, etc.
 ```
 
 ### HTTPS
 
-Em produção, toda comunicação deve ser via HTTPS. O `Jwt:Issuer` deve usar `https://` para que o OIDC funcione corretamente.
+In production every connection must use HTTPS. `Jwt:Issuer` must use `https://` for OIDC to work correctly.
 
 ---
 
-## 8. Referência rápida de comandos
+## 8. Command quick reference
 
 ```bash
-# Backend: aplicar migrations
+# Backend: apply migrations
 dotnet ef database update --project IdPPlatform.Infrastructure --startup-project IdPPlatform.API
 
-# Backend: gerar nova migration
-dotnet ef migrations add NomeDaMigration --project IdPPlatform.Infrastructure --startup-project IdPPlatform.API --output-dir Migrations
+# Backend: create a new migration
+dotnet ef migrations add MigrationName --project IdPPlatform.Infrastructure --startup-project IdPPlatform.API --output-dir Migrations
 
-# Backend: rodar em dev
+# Backend: run in dev
 dotnet run --project backend/IdPPlatform.API
 
-# Frontend: rodar em dev
+# Frontend: run in dev
 cd frontend && npm run dev
 
 # Frontend: build
 cd frontend && npm run build
 
-# Chave OIDC (GenerateOidcKey)
+# OIDC key (GenerateOidcKey)
 dotnet run --project backend/tools/GenerateOidcKey/GenerateOidcKey.csproj
 
-# Bootstrap (com API rodando) — ou use o botão no frontend em /login
+# Bootstrap (with API running) — or use the button in the frontend at /login
 curl http://localhost:5000/v1.0/platform/status
 curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 ```
 
 ---
 
-## 9. Solução de problemas
+## 9. Troubleshooting
 
-| Problema | Causa provável | Solução |
-|----------|---------------|---------|
-| API não inicia: erro de chave RSA | `keys/oidc-signing.pem` não existe | Gerar com `openssl genpkey` (passo 3.2) |
-| Bootstrap retorna 400 | Credenciais não configuradas no appsettings/env | Verificar seção `Bootstrap` ou `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` |
-| Bootstrap retorna "já bootstrapped" | Bootstrap já foi executado | Ignorar; fazer login normalmente |
-| Frontend não carrega após login | `VITE_OAUTH_REDIRECT_URI` incorreta | Confirmar que o `redirect_uri` bate com o `platform-admin-web` client |
-| JWT expirado / 401 | Token expirado e refresh falhou | Fazer logout e login novamente |
-| Convites não chegam por email | AWS SES não configurado | Configurar `Email:*` com credenciais SES válidas |
-| Erro de CORS | Frontend em URL diferente | Verificar `VITE_API_BASE_URL` e CORS da API |
+| Issue | Likely cause | Solution |
+|-------|--------------|----------|
+| API fails to start: RSA key error | `keys/oidc-signing.pem` is missing | Generate it with `openssl genpkey` (step 3.2) |
+| Bootstrap returns 400 | Credentials not configured in appsettings/env | Verify the `Bootstrap` section or `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` |
+| Bootstrap returns "already bootstrapped" | Bootstrap was already executed | Ignore and sign in normally |
+| Frontend does not load after login | `VITE_OAUTH_REDIRECT_URI` is wrong | Confirm that the `redirect_uri` matches the `platform-admin-web` client |
+| Expired JWT / 401 | Token expired and refresh failed | Sign out and sign in again |
+| Invites do not arrive by email | AWS SES is not configured | Configure `Email:*` with valid SES credentials |
+| CORS error | Frontend on a different URL | Verify `VITE_API_BASE_URL` and the API's CORS settings |
+| Cannot decrypt an existing IdP configuration | Data Protection key ring lost | Restore the `SecretProtection:KeyDirectoryPath` from backup, or recreate the IdP entry |

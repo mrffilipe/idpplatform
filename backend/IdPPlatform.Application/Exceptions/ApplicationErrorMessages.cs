@@ -63,4 +63,9 @@ public static class ApplicationErrorMessages
         public const string ConfigRequired = "Identity provider configuration (ConfigJson) is required for this provider type.";
         public const string LoginTypeNotSupported = "Login is not yet supported for this identity provider type.";
     }
+
+    public static class Signing
+    {
+        public const string RsaKeyNotAvailable = "RSA key is not available.";
+    }
 }

@@ -212,7 +212,7 @@ public sealed class PlatformService : IPlatformService
     }
 
     /// <summary>
-    /// Instalações bootstrapped antes de <c>offline_access</c> no admin console precisam do scope para refresh tokens (SPA).
+    /// Installations bootstrapped before <c>offline_access</c> was added to the admin console need the scope for refresh tokens (SPA).
     /// </summary>
     private async Task EnsureAdminConsoleOfflineAccessScopeAsync(CancellationToken cancellationToken)
     {
