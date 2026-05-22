@@ -164,18 +164,18 @@ const isPlatformAdmin = platformRoles.includes('plat_admin')
 
 O item de navegação "Identity Providers" e a tela de criação de applications só aparecem para `plat_admin`.
 
-### Identity Providers — schemas `ConfigJson`
+### Identity Providers — schemas `ConfigJson` e capabilities
 
-A página **Identity Providers** (`IdentityProvidersPage.tsx`) orienta o cadastro por tipo:
+A página **Identity Providers** (`IdentityProvidersPage.tsx`) orienta o cadastro por tipo e agora coleta flags `IdpCapability` (LocalPassword / GoogleSocial / MicrosoftSocial / AppleSocial / GenericOidc) via checkboxes. O form trava `LocalPassword` no provider Local; `warnings` de conflito retornados pelo backend são exibidos em alerta dispensável.
 
-| Tipo | Campos no JSON | Observação na UI |
-|------|----------------|------------------|
-| Local | nenhum obrigatório | sem `ConfigJson` |
-| Firebase | `projectId`, `webApiKey`, `serviceAccount` | guia na UI (`FirebaseConfigHelp`): **não** é o `firebaseConfig` do app Web; `serviceAccount` = arquivo `.json` da conta de serviço Admin SDK |
-| Cognito | `userPoolId`, `region`, `clientId` | aviso: login ainda não disponível |
-| Generic | `issuer`, `jwksUri`, `audience` | aviso: login ainda não disponível |
+| Tipo | Campos no JSON | Capabilities default | Observação na UI |
+|------|----------------|----------------------|------------------|
+| Local | nenhum obrigatório | LocalPassword (locked) | sem `ConfigJson` |
+| Firebase | `projectId`, `webApiKey`, `serviceAccount` | GoogleSocial | guia na UI (`FirebaseConfigHelp`): **não** é o `firebaseConfig` do app Web; `serviceAccount` = arquivo `.json` da conta de serviço Admin SDK |
+| Cognito | `userPoolId`, `region`, `clientId` | GenericOidc | aviso: login ainda não disponível |
+| Generic | `issuer`, `jwksUri`, `audience` | GenericOidc | aviso: login ainda não disponível |
 
-Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend.
+Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, `IdpCapability`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend. Self-signup de usuários finais é responsabilidade do IdP em `/account/register`, nunca dos apps cliente.
 
 ---
 

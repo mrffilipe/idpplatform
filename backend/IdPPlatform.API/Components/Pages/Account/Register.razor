@@ -1,0 +1,161 @@
+@page "/account/register"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using IdPPlatform.API.Common
+@using IdPPlatform.Application.Exceptions
+@using IdPPlatform.Application.Services.Registration
+@using IdPPlatform.Domain.Exceptions
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Mvc
+@using Microsoft.AspNetCore.RateLimiting
+@inject IRegistrationService RegistrationService
+@inject HttpContext HttpContext
+@attribute [EnableRateLimiting("account_register")]
+
+<HeadContent>
+    <title>Create account - IdP Platform</title>
+</HeadContent>
+
+<div class="account-page">
+    <header class="account-header">
+        <h1>Create your account</h1>
+        <p class="account-subtitle">One identity, every connected application.</p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="account-alert" role="alert" aria-live="polite">
+            @_errorMessage
+        </div>
+    }
+
+    <EditForm Model="Input" FormName="register" OnValidSubmit="HandleSubmitAsync" method="post" class="account-form" novalidate>
+        <AntiforgeryToken />
+        <DataAnnotationsValidator />
+
+        <input type="hidden" name="Input.ReturnUrl" value="@Input.ReturnUrl" />
+
+        <div class="account-field">
+            <label for="display-name">Full name</label>
+            <InputText id="display-name" @bind-Value="Input.DisplayName" autocomplete="name" placeholder="Jane Doe" />
+            <ValidationMessage For="@(() => Input.DisplayName)" />
+        </div>
+
+        <div class="account-field">
+            <label for="email">Email</label>
+            <InputText id="email" type="email" @bind-Value="Input.Email" autocomplete="email" inputmode="email" placeholder="you@company.com" />
+            <ValidationMessage For="@(() => Input.Email)" />
+        </div>
+
+        <div class="account-field">
+            <label for="password">Password</label>
+            <InputText id="password" type="password" @bind-Value="Input.Password" autocomplete="new-password" placeholder="••••••••" />
+            <ValidationMessage For="@(() => Input.Password)" />
+            <div class="account-hint">Minimum 12 characters, with at least one letter and one digit.</div>
+        </div>
+
+        <div class="account-field">
+            <label for="password-confirm">Confirm password</label>
+            <InputText id="password-confirm" type="password" @bind-Value="Input.PasswordConfirm" autocomplete="new-password" placeholder="••••••••" />
+            <ValidationMessage For="@(() => Input.PasswordConfirm)" />
+        </div>
+
+        <button type="submit" class="account-btn account-btn-primary">Create account</button>
+    </EditForm>
+
+    <footer class="account-footer">
+        <span>Already have an account?</span>
+        <a href="@($"/account/login?returnUrl={Uri.EscapeDataString(Input.ReturnUrl ?? string.Empty)}")">Sign in</a>
+    </footer>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    public RegisterInputModel Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private string? _errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (!HttpMethods.IsPost(HttpContext.Request.Method) && !string.IsNullOrEmpty(ReturnUrl))
+        {
+            Input.ReturnUrl = ReturnUrl;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        _errorMessage = null;
+
+        if (!string.Equals(Input.Password, Input.PasswordConfirm, StringComparison.Ordinal))
+        {
+            _errorMessage = "The password and confirmation do not match.";
+            return;
+        }
+
+        try
+        {
+            var result = await RegistrationService.RegisterAsync(
+                new RegisterUserRequest
+                {
+                    Email = Input.Email,
+                    Password = Input.Password,
+                    DisplayName = Input.DisplayName
+                },
+                HttpContext.RequestAborted);
+
+            var redirectTarget = string.IsNullOrWhiteSpace(Input.ReturnUrl) ? "/" : Input.ReturnUrl;
+
+            // Sign in the newly created user with the cookie auth scheme so subsequent
+            // requests (e.g., /connect/authorize) see them as authenticated.
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, result.UserId.ToString("D")),
+                new(ClaimTypes.Name, result.DisplayName),
+                new(ClaimTypes.Email, result.Email)
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+                new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    RedirectUri = redirectTarget
+                });
+
+            HttpContext.Response.Redirect(redirectTarget);
+        }
+        catch (DomainBusinessRuleException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (DomainValidationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    public sealed class RegisterInputModel
+    {
+        [Required(ErrorMessage = "Full name is required.")]
+        [StringLength(120, ErrorMessage = "Full name max length is 120 characters.")]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please confirm your password.")]
+        public string PasswordConfirm { get; set; } = string.Empty;
+
+        public string? ReturnUrl { get; set; }
+    }
+}

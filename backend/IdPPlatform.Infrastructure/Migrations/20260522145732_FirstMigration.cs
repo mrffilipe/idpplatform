@@ -50,6 +50,28 @@ namespace IdPPlatform.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "auth_sessions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    client_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    membership_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    user_agent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ip_address = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: true),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    last_activity_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_auth_sessions", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "identity_providers",
                 columns: table => new
                 {
@@ -59,6 +81,7 @@ namespace IdPPlatform.Infrastructure.Migrations
                     provider_type = table.Column<int>(type: "integer", nullable: false),
                     enabled = table.Column<bool>(type: "boolean", nullable: false),
                     config_json = table.Column<string>(type: "json", nullable: true),
+                    capabilities = table.Column<int[]>(type: "integer[]", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -235,34 +258,6 @@ namespace IdPPlatform.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "auth_sessions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    client_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    membership_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    user_agent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    ip_address = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: true),
-                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    last_activity_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_auth_sessions", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_auth_sessions_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "external_identities",
                 columns: table => new
                 {
@@ -363,34 +358,6 @@ namespace IdPPlatform.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "tenant_invite_roles",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    invite_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_tenant_invite_roles", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_tenant_invite_roles_tenant_invites_invite_id",
-                        column: x => x.invite_id,
-                        principalTable: "tenant_invites",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_tenant_invite_roles_tenant_roles_role_id",
-                        column: x => x.role_id,
-                        principalTable: "tenant_roles",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "oidc_authorization_codes",
                 columns: table => new
                 {
@@ -457,6 +424,34 @@ namespace IdPPlatform.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tenant_invite_roles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    invite_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tenant_invite_roles", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_tenant_invite_roles_tenant_invites_invite_id",
+                        column: x => x.invite_id,
+                        principalTable: "tenant_invites",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_tenant_invite_roles_tenant_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "tenant_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tenant_membership_roles",
                 columns: table => new
                 {
@@ -516,11 +511,6 @@ namespace IdPPlatform.Infrastructure.Migrations
                 name: "IX_audit_logs_tenant_id",
                 table: "audit_logs",
                 column: "tenant_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_auth_sessions_user_id",
-                table: "auth_sessions",
-                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_external_identities_provider_provider_user_id",

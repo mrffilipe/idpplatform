@@ -17,6 +17,8 @@ public interface IIdentityProviderRepository
 
     Task<IReadOnlyList<IdentityProvider>> ListEnabledAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<IdentityProvider>> ListEnabledByCapabilityAsync(IdpCapability capability, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<IdentityProvider>> ListAllAsync(CancellationToken cancellationToken = default);
 
     Task<bool> AliasAlreadyExistsAsync(string alias, CancellationToken cancellationToken = default);

@@ -1,17 +1,12 @@
 using System.Security.Claims;
 using System.Text.Json;
 using IdPPlatform.API.Common;
-using IdPPlatform.API.Models;
 using IdPPlatform.Application.Services.Auth;
-using IdPPlatform.Application.Services.IdentityProvider;
 using IdPPlatform.Application.Services.LocalAuthentication;
-using LocalLoginResult = IdPPlatform.Application.Services.LocalAuthentication.LocalLoginResult;
 using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Entities;
-using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Repositories;
 using IdPPlatform.Infrastructure.Configurations;
-using IdPPlatform.Infrastructure.Services.ExternalIdentityProvider;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -25,8 +20,6 @@ public sealed class AccountController : Controller
 {
     private readonly ILocalAuthenticationService _localAuth;
     private readonly IExternalLoginService _externalLogin;
-    private readonly IIdentityProviderRepository _identityProviders;
-    private readonly IIdentityProviderConfigCipher _configCipher;
     private readonly IAuthSessionRepository _sessions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtOptions _jwtOptions;
@@ -34,26 +27,15 @@ public sealed class AccountController : Controller
     public AccountController(
         ILocalAuthenticationService localAuth,
         IExternalLoginService externalLogin,
-        IIdentityProviderRepository identityProviders,
-        IIdentityProviderConfigCipher configCipher,
         IAuthSessionRepository sessions,
         IUnitOfWork unitOfWork,
         IOptions<JwtOptions> jwtOptions)
     {
         _localAuth = localAuth;
         _externalLogin = externalLogin;
-        _identityProviders = identityProviders;
-        _configCipher = configCipher;
         _sessions = sessions;
         _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
-    }
-
-    [HttpGet("/account/login")]
-    public async Task<IActionResult> Login([FromQuery] string? returnUrl, CancellationToken cancellationToken)
-    {
-        var model = await BuildLoginViewModelAsync(returnUrl, cancellationToken);
-        return View(model);
     }
 
     [HttpPost("/account/login")]
@@ -66,8 +48,7 @@ public sealed class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.EmailAndPasswordRequired);
-            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+            return RedirectToLogin(returnUrl, "missing_fields");
         }
 
         var login = await _localAuth.LoginAsync(
@@ -76,8 +57,7 @@ public sealed class AccountController : Controller
 
         if (login is null)
         {
-            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.InvalidEmailOrPassword);
-            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+            return RedirectToLogin(returnUrl, "invalid_credentials");
         }
 
         return await CompleteLoginAsync(login.ToExternalLoginResult(), returnUrl, cancellationToken);
@@ -93,8 +73,7 @@ public sealed class AccountController : Controller
     {
         if (string.IsNullOrWhiteSpace(providerAlias) || string.IsNullOrWhiteSpace(idToken))
         {
-            ModelState.AddModelError(string.Empty, ApiErrorMessages.Account.InvalidProviderOrToken);
-            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+            return RedirectToLogin(returnUrl, "invalid_provider");
         }
 
         try
@@ -107,8 +86,7 @@ public sealed class AccountController : Controller
             or Application.Exceptions.UnauthorizedApplicationException
             or Domain.Exceptions.DomainValidationException)
         {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View(await BuildLoginViewModelAsync(returnUrl, cancellationToken));
+            return RedirectToLogin(returnUrl, "invalid_provider");
         }
     }
 
@@ -119,6 +97,16 @@ public sealed class AccountController : Controller
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/");
+    }
+
+    private IActionResult RedirectToLogin(string? returnUrl, string errorCode)
+    {
+        var query = QueryString.Create(new Dictionary<string, string?>
+        {
+            ["returnUrl"] = returnUrl,
+            ["error"] = errorCode
+        }.Where(p => !string.IsNullOrWhiteSpace(p.Value)));
+        return Redirect($"/account/login{query}");
     }
 
     private async Task<IActionResult> CompleteLoginAsync(
@@ -169,77 +157,4 @@ public sealed class AccountController : Controller
 
         return Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
     }
-
-    private async Task<AccountLoginViewModel> BuildLoginViewModelAsync(
-        string? returnUrl,
-        CancellationToken cancellationToken)
-    {
-        var showLocal = await _identityProviders.AnyEnabledLocalProviderAsync(cancellationToken);
-        var enabled = await _identityProviders.ListEnabledAsync(cancellationToken);
-
-        var federated = enabled
-            .Where(p => p.ProviderType != IdentityProviderType.Local)
-            .Select(MapFederatedProvider)
-            .ToList();
-
-        return new AccountLoginViewModel
-        {
-            ReturnUrl = returnUrl,
-            ShowLocalLogin = showLocal,
-            FederatedProviders = federated
-        };
-    }
-
-    private FederatedProviderViewModel MapFederatedProvider(Domain.Entities.IdentityProvider provider)
-    {
-        IReadOnlyDictionary<string, string>? clientConfig = provider.ProviderType switch
-        {
-            IdentityProviderType.Firebase => BuildFirebaseClientConfig(_configCipher.Decrypt(provider.ConfigJson)),
-            _ => null
-        };
-
-        return new FederatedProviderViewModel
-        {
-            Alias = provider.Alias,
-            DisplayName = provider.DisplayName,
-            ProviderType = provider.ProviderType.ToString(),
-            ClientConfig = clientConfig
-        };
-    }
-
-    private static IReadOnlyDictionary<string, string>? BuildFirebaseClientConfig(string? configJson)
-    {
-        try
-        {
-            var config = FirebaseTokenValidator.DeserializeConfig(configJson);
-            if (string.IsNullOrWhiteSpace(config.ProjectId) || string.IsNullOrWhiteSpace(config.WebApiKey))
-            {
-                return null;
-            }
-
-            return new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["projectId"] = config.ProjectId,
-                ["webApiKey"] = config.WebApiKey,
-                ["authDomain"] = config.ResolveAuthDomain()
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-}
-
-internal static class LocalLoginResultExtensions
-{
-    public static ExternalLoginResult ToExternalLoginResult(this LocalLoginResult login) =>
-        new()
-        {
-            UserId = login.UserId,
-            Email = login.Email,
-            DisplayName = login.DisplayName,
-            PlatformRoles = login.PlatformRoles,
-            TenantMemberships = login.TenantMemberships
-        };
 }

@@ -68,4 +68,20 @@ public static class ApplicationErrorMessages
     {
         public const string RsaKeyNotAvailable = "RSA key is not available.";
     }
+
+    public static class Registration
+    {
+        public const string EmailRequired = "Email is required.";
+        public const string EmailAlreadyExists = "An account with this email already exists.";
+        public const string PasswordRequired = "Password is required.";
+        public const string PasswordTooWeak = "Password does not meet the minimum policy.";
+        public const string DisplayNameRequired = "Display name is required.";
+        public const string LocalPasswordDisabled = "Self-registration is disabled because no local identity provider is enabled.";
+    }
+
+    public static class IdentityProviderCapability
+    {
+        public const string LocalPasswordAlreadyHandled = "Another active identity provider already handles email/password authentication.";
+        public const string SocialAlreadyHandledFormat = "Another enabled provider already advertises the {0} capability: {1}.";
+    }
 }

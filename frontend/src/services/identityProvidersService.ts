@@ -1,6 +1,7 @@
 import { api } from '../config'
 import type {
   AddIdentityProviderBody,
+  AddIdentityProviderResult,
   IdentityProviderDto,
   UpdateIdentityProviderBody,
 } from '../types'
@@ -16,8 +17,8 @@ export async function getIdentityProviderById(id: string): Promise<IdentityProvi
   return data
 }
 
-export async function addIdentityProvider(body: AddIdentityProviderBody): Promise<{ id: string }> {
-  const { data } = await api.post<{ id: string }>(apiPaths.identityProviders, body)
+export async function addIdentityProvider(body: AddIdentityProviderBody): Promise<AddIdentityProviderResult> {
+  const { data } = await api.post<AddIdentityProviderResult>(apiPaths.identityProviders, body)
   return data
 }
 

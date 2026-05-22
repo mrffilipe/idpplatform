@@ -10,5 +10,7 @@ public sealed record AddIdentityProviderRequest
 
     public required IdentityProviderType ProviderType { get; init; }
 
+    public required IReadOnlyCollection<IdpCapability> Capabilities { get; init; }
+
     public string? ConfigJson { get; init; }
 }

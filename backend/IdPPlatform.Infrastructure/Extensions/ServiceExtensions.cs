@@ -2,6 +2,7 @@ using IdPPlatform.Application.Interfaces;
 using IdPPlatform.Application.Services.Auth;
 using IdPPlatform.Application.Services.Email;
 using IdPPlatform.Application.Services.RefreshTokenHasher;
+using IdPPlatform.Application.Services.Registration;
 using IdPPlatform.Application.Services.TenantResolutionCache;
 using IdPPlatform.Application.Services.TenantRoles;
 using IdPPlatform.Application.Services.UnitOfWork;
@@ -10,6 +11,7 @@ using IdPPlatform.Infrastructure.Services.Auth;
 using IdPPlatform.Infrastructure.Services.Email;
 using IdPPlatform.Infrastructure.Services.Invite;
 using IdPPlatform.Infrastructure.Services.RefreshTokenHasher;
+using IdPPlatform.Infrastructure.Services.Registration;
 using IdPPlatform.Infrastructure.Services.TenantResolutionCache;
 using IdPPlatform.Infrastructure.Services.TenantRoles;
 using IdPPlatform.Infrastructure.Services.UnitOfWork;
@@ -30,6 +32,8 @@ public static class ServiceExtensions
         services.AddScoped<IEmailService, AwsSesEmailService>();
         services.AddScoped<IInvitePolicy, InvitePolicy>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<IPasswordPolicy, PasswordPolicy>();
+        services.AddScoped<IRegistrationService, RegistrationService>();
 
         return services;
     }

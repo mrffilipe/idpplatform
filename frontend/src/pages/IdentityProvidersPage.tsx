@@ -1,13 +1,18 @@
 import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
+  Box,
   Button,
+  Checkbox,
   Chip,
+  FormControlLabel,
+  FormGroup,
   MenuItem,
   Stack,
   TableCell,
   TableRow,
   TextField,
+  Typography,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import {
@@ -32,6 +37,7 @@ import { FirebaseConfigHelp } from '../components/identityProviders/FirebaseConf
 import { FIREBASE_IDP_CONFIG_EXAMPLE } from '../content/firebaseIdpConfig'
 import {
   IdentityProviderType,
+  IdpCapability,
   type AddIdentityProviderBody,
   type IdentityProviderDto,
   type UpdateIdentityProviderBody,
@@ -42,21 +48,54 @@ const providerTypeOptions: Array<{ label: string; value: IdentityProviderType }>
   { label: 'Local', value: IdentityProviderType.Local },
   { label: 'Firebase', value: IdentityProviderType.Firebase },
   { label: 'Amazon Cognito', value: IdentityProviderType.Cognito },
-  { label: 'Genérico', value: IdentityProviderType.Generic },
+  { label: 'Generic OIDC', value: IdentityProviderType.Generic },
 ]
+
+const capabilityOptions: Array<{ value: IdpCapability; label: string; locked?: IdentityProviderType }> = [
+  { value: IdpCapability.LocalPassword, label: 'Email + password (local)', locked: IdentityProviderType.Local },
+  { value: IdpCapability.GoogleSocial, label: 'Sign in with Google' },
+  { value: IdpCapability.MicrosoftSocial, label: 'Sign in with Microsoft' },
+  { value: IdpCapability.AppleSocial, label: 'Sign in with Apple' },
+  { value: IdpCapability.GenericOidc, label: 'Generic OIDC' },
+]
+
+function defaultCapabilitiesFor(type: IdentityProviderType): IdpCapability[] {
+  switch (type) {
+    case IdentityProviderType.Local:
+      return [IdpCapability.LocalPassword]
+    case IdentityProviderType.Firebase:
+      return [IdpCapability.GoogleSocial]
+    case IdentityProviderType.Cognito:
+    case IdentityProviderType.Generic:
+      return [IdpCapability.GenericOidc]
+    default:
+      return []
+  }
+}
+
+function isCapabilityAllowed(type: IdentityProviderType, capability: IdpCapability): boolean {
+  if (capability === IdpCapability.LocalPassword) {
+    return type === IdentityProviderType.Local
+  }
+  return type !== IdentityProviderType.Local
+}
 
 function providerTypeLabel(type: IdentityProviderType | undefined): string {
   return providerTypeOptions.find((o) => o.value === type)?.label ?? String(type ?? '—')
 }
 
+function capabilityLabel(capability: IdpCapability): string {
+  return capabilityOptions.find((o) => o.value === capability)?.label ?? capability
+}
+
 const CONFIG_SCHEMA_HINTS: Record<IdentityProviderType, string> = {
-  [IdentityProviderType.Local]: 'Local não exige ConfigJson.',
+  [IdentityProviderType.Local]: 'Local does not require ConfigJson.',
   [IdentityProviderType.Firebase]:
-    'Monte um JSON com 3 partes: projectId e webApiKey (Configurações do projeto → Geral) + serviceAccount (arquivo .json da conta de serviço Admin SDK). Veja o guia abaixo.',
+    'Build a JSON with three parts: projectId and webApiKey (Project settings → General) + serviceAccount (Admin SDK service account .json file). See the guide below.',
   [IdentityProviderType.Cognito]:
-    'Obrigatório: userPoolId, region, clientId. Login via Cognito ainda não está disponível — apenas cadastro para uso futuro.',
+    'Required: userPoolId, region, clientId. Cognito login is not yet implemented — registration only.',
   [IdentityProviderType.Generic]:
-    'Obrigatório: issuer, jwksUri, audience. Login OIDC genérico ainda não está disponível — apenas cadastro para uso futuro.',
+    'Required: issuer, jwksUri, audience. Generic OIDC login is not yet implemented — registration only.',
 }
 
 const CONFIG_EXAMPLES: Partial<Record<IdentityProviderType, string>> = {
@@ -64,12 +103,12 @@ const CONFIG_EXAMPLES: Partial<Record<IdentityProviderType, string>> = {
   [IdentityProviderType.Cognito]: `{
   "userPoolId": "us-east-1_XXXXX",
   "region": "us-east-1",
-  "clientId": "seu-app-client-id"
+  "clientId": "your-app-client-id"
 }`,
   [IdentityProviderType.Generic]: `{
-  "issuer": "https://idp.exemplo.com",
-  "jwksUri": "https://idp.exemplo.com/.well-known/jwks.json",
-  "audience": "sua-audience"
+  "issuer": "https://idp.example.com",
+  "jwksUri": "https://idp.example.com/.well-known/jwks.json",
+  "audience": "your-audience"
 }`,
 }
 
@@ -79,13 +118,13 @@ function validateConfigJson(type: IdentityProviderType, json: string): string | 
   }
   const trimmed = json.trim()
   if (!trimmed) {
-    return 'ConfigJson é obrigatório para este tipo de provedor.'
+    return 'ConfigJson is required for this provider type.'
   }
   try {
     JSON.parse(trimmed)
     return null
   } catch {
-    return 'ConfigJson inválido: verifique a sintaxe JSON.'
+    return 'Invalid ConfigJson: check the JSON syntax.'
   }
 }
 
@@ -100,19 +139,21 @@ export function IdentityProvidersPage() {
   const [items, setItems] = useState<IdentityProviderDto[]>([])
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
   const [addOpen, setAddOpen] = useState(false)
   const [alias, setAlias] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [providerType, setProviderType] = useState<IdentityProviderType>(IdentityProviderType.Firebase)
+  const [capabilities, setCapabilities] = useState<IdpCapability[]>(defaultCapabilitiesFor(IdentityProviderType.Firebase))
   const [configJson, setConfigJson] = useState('')
 
   const [editOpen, setEditOpen] = useState(false)
   const [editId, setEditId] = useState('')
   const [editDisplayName, setEditDisplayName] = useState('')
   const [editConfigJson, setEditConfigJson] = useState('')
-
+  const [editCapabilities, setEditCapabilities] = useState<IdpCapability[]>([])
   const [editProviderType, setEditProviderType] = useState<IdentityProviderType>(IdentityProviderType.Firebase)
 
   useEffect(() => {
@@ -124,11 +165,8 @@ export function IdentityProvidersPage() {
       return
     }
     const example = CONFIG_EXAMPLES[providerType]
-    if (example) {
-      setConfigJson(example)
-    } else {
-      setConfigJson('')
-    }
+    setConfigJson(example ?? '')
+    setCapabilities(defaultCapabilitiesFor(providerType))
   }, [providerType, addOpen])
 
   async function loadProviders(): Promise<void> {
@@ -145,6 +183,7 @@ export function IdentityProvidersPage() {
     setAlias('')
     setDisplayName('')
     setProviderType(IdentityProviderType.Firebase)
+    setCapabilities(defaultCapabilitiesFor(IdentityProviderType.Firebase))
     setConfigJson('')
     setAddOpen(true)
   }
@@ -153,8 +192,22 @@ export function IdentityProvidersPage() {
     setEditId(item.id)
     setEditDisplayName(item.displayName)
     setEditProviderType(item.providerType)
+    setEditCapabilities(item.capabilities ?? [])
     setEditConfigJson('')
     setEditOpen(true)
+  }
+
+  function toggleCapability(
+    list: IdpCapability[],
+    setList: (next: IdpCapability[]) => void,
+    capability: IdpCapability,
+    checked: boolean,
+  ): void {
+    if (checked && !list.includes(capability)) {
+      setList([...list, capability])
+    } else if (!checked) {
+      setList(list.filter((c) => c !== capability))
+    }
   }
 
   async function handleAdd(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -164,18 +217,25 @@ export function IdentityProvidersPage() {
       setError(configError)
       return
     }
+    if (capabilities.length === 0 && providerType !== IdentityProviderType.Local) {
+      setError('Select at least one capability advertised by this provider.')
+      return
+    }
     setLoading(true)
     setError(null)
     setSuccess(null)
+    setWarnings([])
     const body: AddIdentityProviderBody = {
       alias,
       displayName,
       providerType,
+      capabilities,
       configJson: configJson.trim() || null,
     }
     try {
-      await addIdentityProvider(body)
-      setSuccess('Identity provider adicionado.')
+      const result = await addIdentityProvider(body)
+      setSuccess('Identity provider added.')
+      setWarnings(result.warnings ?? [])
       setAddOpen(false)
       await loadProviders()
     } catch (addError) {
@@ -199,11 +259,12 @@ export function IdentityProvidersPage() {
     setSuccess(null)
     const body: UpdateIdentityProviderBody = {
       displayName: editDisplayName,
+      capabilities: editCapabilities,
       configJson: editConfigJson.trim() || null,
     }
     try {
       await updateIdentityProvider(editId, body)
-      setSuccess('Identity provider atualizado.')
+      setSuccess('Identity provider updated.')
       setEditOpen(false)
       await loadProviders()
     } catch (editError) {
@@ -219,10 +280,10 @@ export function IdentityProvidersPage() {
     try {
       if (item.enabled) {
         await disableIdentityProvider(item.id)
-        setSuccess(`"${item.displayName}" desabilitado.`)
+        setSuccess(`"${item.displayName}" disabled.`)
       } else {
         await enableIdentityProvider(item.id)
-        setSuccess(`"${item.displayName}" habilitado.`)
+        setSuccess(`"${item.displayName}" enabled.`)
       }
       await loadProviders()
     } catch (toggleError) {
@@ -233,9 +294,38 @@ export function IdentityProvidersPage() {
   if (!isPlatformAdministrator) {
     return (
       <Stack spacing={3}>
-        <PageHeader title="Identity Providers" description="Gerencie provedores de identidade da plataforma." />
-        <Alert severity="warning">Apenas administradores de plataforma podem gerenciar identity providers.</Alert>
+        <PageHeader title="Identity Providers" description="Manage the platform identity providers." />
+        <Alert severity="warning">Only platform administrators can manage identity providers.</Alert>
       </Stack>
+    )
+  }
+
+  function renderCapabilityCheckboxes(
+    selectedType: IdentityProviderType,
+    selected: IdpCapability[],
+    onChange: (next: IdpCapability[]) => void,
+  ) {
+    return (
+      <FormGroup>
+        {capabilityOptions.map((option) => {
+          const allowed = isCapabilityAllowed(selectedType, option.value)
+          const isLocal = option.value === IdpCapability.LocalPassword
+          const lockedOn = isLocal && selectedType === IdentityProviderType.Local
+          return (
+            <FormControlLabel
+              key={option.value}
+              control={
+                <Checkbox
+                  checked={selected.includes(option.value) || lockedOn}
+                  disabled={!allowed || lockedOn}
+                  onChange={(event) => toggleCapability(selected, onChange, option.value, event.target.checked)}
+                />
+              }
+              label={option.label}
+            />
+          )
+        })}
+      </FormGroup>
     )
   }
 
@@ -243,24 +333,38 @@ export function IdentityProvidersPage() {
     <Stack spacing={3}>
       <PageHeader
         title="Identity Providers"
-        description="Gerencie os provedores de identidade habilitados na plataforma (Local, Firebase, Cognito, etc.)."
+        description="Manage the identity providers enabled in the platform (Local, Firebase, Cognito, etc.)."
         actions={
           <Button startIcon={<AddIcon />} onClick={openAddDialog}>
-            Adicionar IdP
+            Add IdP
           </Button>
         }
       />
 
       <FeedbackAlerts success={success} error={error} />
 
-      <SectionCard title="Provedores cadastrados">
+      {warnings.length > 0 && (
+        <Alert severity="warning" onClose={() => setWarnings([])}>
+          <Typography variant="subtitle2" component="div" sx={{ mb: 1 }}>
+            Capability conflicts detected
+          </Typography>
+          <Stack spacing={0.5} component="ul" sx={{ pl: 2, m: 0 }}>
+            {warnings.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </Stack>
+        </Alert>
+      )}
+
+      <SectionCard title="Registered providers">
         <DataTable
           columns={[
             { id: 'alias', label: 'Alias' },
-            { id: 'displayName', label: 'Nome' },
-            { id: 'type', label: 'Tipo' },
+            { id: 'displayName', label: 'Name' },
+            { id: 'type', label: 'Type' },
+            { id: 'capabilities', label: 'Capabilities' },
             { id: 'status', label: 'Status' },
-            { id: 'actions', label: 'Ações', align: 'right' },
+            { id: 'actions', label: 'Actions', align: 'right' },
           ]}
           rows={items.map((item) => (
             <TableRow key={item.id} hover>
@@ -268,8 +372,15 @@ export function IdentityProvidersPage() {
               <TableCell>{item.displayName}</TableCell>
               <TableCell>{providerTypeLabel(item.providerType)}</TableCell>
               <TableCell>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(item.capabilities ?? []).map((capability) => (
+                    <Chip key={capability} label={capabilityLabel(capability)} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              </TableCell>
+              <TableCell>
                 <Chip
-                  label={item.enabled ? 'Habilitado' : 'Desabilitado'}
+                  label={item.enabled ? 'Enabled' : 'Disabled'}
                   size="small"
                   color={item.enabled ? 'success' : 'default'}
                   variant="outlined"
@@ -278,20 +389,20 @@ export function IdentityProvidersPage() {
               <TableCell align="right">
                 <Stack direction="row" spacing={1} justifyContent="flex-end">
                   <Button size="small" onClick={() => openEditDialog(item)}>
-                    Editar
+                    Edit
                   </Button>
                   <Button
                     size="small"
                     color={item.enabled ? 'warning' : 'success'}
                     onClick={() => void handleToggle(item)}
                   >
-                    {item.enabled ? 'Desabilitar' : 'Habilitar'}
+                    {item.enabled ? 'Disable' : 'Enable'}
                   </Button>
                 </Stack>
               </TableCell>
             </TableRow>
           ))}
-          emptyDescription="Nenhum identity provider cadastrado. Adicione ao menos um além do Local para federação."
+          emptyDescription="No identity providers registered yet. Add at least one beyond Local for federation."
         />
       </SectionCard>
 
@@ -299,13 +410,13 @@ export function IdentityProvidersPage() {
       <ResourceDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        title="Adicionar identity provider"
-        description="Configure um novo provedor de identidade para federação."
+        title="Add identity provider"
+        description="Register a new identity provider for federation."
         loading={loading}
-        submitLabel="Adicionar"
+        submitLabel="Add"
         onSubmit={handleAdd}
       >
-        <FormSection title="Identificação">
+        <FormSection title="Identification">
           <FormGrid>
             <FormGridItem>
               <TextField
@@ -314,12 +425,12 @@ export function IdentityProvidersPage() {
                 onChange={(event) => setAlias(event.target.value)}
                 required
                 fullWidth
-                helperText="Identificador único, letras minúsculas, números e hífens."
+                helperText="Unique identifier (lowercase letters, digits and hyphens)."
               />
             </FormGridItem>
             <FormGridItem>
               <TextField
-                label="Nome de exibição"
+                label="Display name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 required
@@ -329,7 +440,7 @@ export function IdentityProvidersPage() {
             <FormGridItem xs={12}>
               <TextField
                 select
-                label="Tipo"
+                label="Type"
                 value={providerType}
                 onChange={(event) => setProviderType(event.target.value as IdentityProviderType)}
                 fullWidth
@@ -340,6 +451,16 @@ export function IdentityProvidersPage() {
                   </MenuItem>
                 ))}
               </TextField>
+            </FormGridItem>
+            <FormGridItem xs={12}>
+              <Typography variant="subtitle2" component="div" sx={{ mb: 1 }}>
+                Advertised capabilities
+              </Typography>
+              <Typography variant="caption" component="div" color="text.secondary" sx={{ mb: 1 }}>
+                LocalPassword is hard-locked to the Local provider; one provider per platform.
+                Social capabilities allow multiple providers but emit warnings on conflict.
+              </Typography>
+              {renderCapabilityCheckboxes(providerType, capabilities, setCapabilities)}
             </FormGridItem>
             {providerType === IdentityProviderType.Firebase && (
               <FormGridItem xs={12}>
@@ -357,7 +478,7 @@ export function IdentityProvidersPage() {
               providerType === IdentityProviderType.Generic) && (
               <FormGridItem xs={12}>
                 <Alert severity="warning" sx={{ width: '100%' }}>
-                  Login ainda não disponível para este tipo; o cadastro prepara o provedor para uso futuro.
+                  Login is not yet implemented for this type; registration prepares the provider for future use.
                 </Alert>
               </FormGridItem>
             )}
@@ -365,10 +486,10 @@ export function IdentityProvidersPage() {
               <TextField
                 label={
                   providerType === IdentityProviderType.Firebase
-                    ? 'ConfigJson (cole o JSON completo aqui)'
+                    ? 'ConfigJson (paste the full JSON here)'
                     : configJsonRequired(providerType)
-                      ? 'Configuração (JSON)'
-                      : 'Configuração (JSON opcional)'
+                      ? 'Configuration (JSON)'
+                      : 'Configuration (JSON, optional)'
                 }
                 value={configJson}
                 onChange={(event) => setConfigJson(event.target.value)}
@@ -378,7 +499,7 @@ export function IdentityProvidersPage() {
                 required={configJsonRequired(providerType)}
                 helperText={
                   providerType === IdentityProviderType.Firebase
-                    ? 'Substitua os placeholders do modelo acima pelos valores do seu projeto Firebase.'
+                    ? 'Replace the placeholders above with values from your Firebase project.'
                     : CONFIG_SCHEMA_HINTS[providerType]
                 }
                 slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 } } }}
@@ -392,22 +513,28 @@ export function IdentityProvidersPage() {
       <ResourceDialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        title="Editar identity provider"
-        description="Atualize o nome de exibição ou a configuração do provedor."
+        title="Edit identity provider"
+        description="Update the display name, capabilities or configuration."
         loading={loading}
-        submitLabel="Salvar"
+        submitLabel="Save"
         onSubmit={handleEdit}
       >
-        <FormSection title="Identificação">
+        <FormSection title="Identification">
           <FormGrid>
             <FormGridItem xs={12} md={12}>
               <TextField
-                label="Nome de exibição"
+                label="Display name"
                 value={editDisplayName}
                 onChange={(event) => setEditDisplayName(event.target.value)}
                 required
                 fullWidth
               />
+            </FormGridItem>
+            <FormGridItem xs={12}>
+              <Typography variant="subtitle2" component="div" sx={{ mb: 1 }}>
+                Advertised capabilities
+              </Typography>
+              {renderCapabilityCheckboxes(editProviderType, editCapabilities, setEditCapabilities)}
             </FormGridItem>
             {editProviderType === IdentityProviderType.Firebase && (
               <FormGridItem xs={12}>
@@ -425,15 +552,15 @@ export function IdentityProvidersPage() {
               <TextField
                 label={
                   editProviderType === IdentityProviderType.Firebase
-                    ? 'ConfigJson (novo valor; vazio = manter atual)'
-                    : 'Configuração (JSON)'
+                    ? 'ConfigJson (new value; empty = keep current)'
+                    : 'Configuration (JSON)'
                 }
                 value={editConfigJson}
                 onChange={(event) => setEditConfigJson(event.target.value)}
                 fullWidth
                 multiline
                 minRows={editProviderType === IdentityProviderType.Firebase ? 12 : 6}
-                helperText="Deixe vazio para manter a configuração atual. Se preencher, use JSON válido no formato do guia Firebase."
+                helperText="Leave empty to keep the current configuration. If provided, use valid JSON in the Firebase guide format."
                 slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.4 } } }}
               />
             </FormGridItem>

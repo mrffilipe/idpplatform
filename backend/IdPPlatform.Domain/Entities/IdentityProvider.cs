@@ -7,10 +7,25 @@ namespace IdPPlatform.Domain.Entities;
 public sealed class IdentityProvider : BaseEntity
 {
     public string Alias { get; private set; } = string.Empty;
+
     public string DisplayName { get; private set; } = string.Empty;
+
     public IdentityProviderType ProviderType { get; private set; }
+
     public bool Enabled { get; private set; }
+
+    /// <summary>
+    /// Sensitive fields of <see cref="ConfigJson"/> (e.g., Firebase ServiceAccount, WebApiKey) are
+    /// encrypted at rest by <c>IdentityProviderConfigCipher</c> using ASP.NET Core Data Protection.
+    /// </summary>
     public string? ConfigJson { get; private set; }
+
+    /// <summary>
+    /// Authentication capabilities advertised by this provider on the login page.
+    /// Hard-locked invariant: only <see cref="IdentityProviderType.Local"/> may advertise
+    /// <see cref="IdpCapability.LocalPassword"/>, and a Local provider must advertise it.
+    /// </summary>
+    public IReadOnlyCollection<IdpCapability> Capabilities { get; private set; } = Array.Empty<IdpCapability>();
 
     private IdentityProvider()
     {
@@ -20,6 +35,7 @@ public sealed class IdentityProvider : BaseEntity
         string alias,
         string displayName,
         IdentityProviderType providerType,
+        IEnumerable<IdpCapability> capabilities,
         bool enabled = true,
         string? configJson = null)
     {
@@ -43,6 +59,7 @@ public sealed class IdentityProvider : BaseEntity
         ProviderType = providerType;
         Enabled = enabled;
         ConfigJson = configJson;
+        Capabilities = NormalizeCapabilities(providerType, capabilities);
     }
 
     public void Enable() => Enabled = true;
@@ -59,5 +76,44 @@ public sealed class IdentityProvider : BaseEntity
         }
 
         DisplayName = displayName.Trim();
+    }
+
+    public void UpdateCapabilities(IEnumerable<IdpCapability> capabilities)
+    {
+        Capabilities = NormalizeCapabilities(ProviderType, capabilities);
+    }
+
+    private static IReadOnlyCollection<IdpCapability> NormalizeCapabilities(
+        IdentityProviderType providerType,
+        IEnumerable<IdpCapability> capabilities)
+    {
+        var distinct = capabilities?.Distinct().ToList() ?? new List<IdpCapability>();
+
+        if (providerType == IdentityProviderType.Local)
+        {
+            if (distinct.Any(c => c != IdpCapability.LocalPassword))
+            {
+                throw new DomainValidationException(DomainErrorMessages.IdentityProvider.LocalPasswordReservedForLocal);
+            }
+
+            if (!distinct.Contains(IdpCapability.LocalPassword))
+            {
+                distinct.Add(IdpCapability.LocalPassword);
+            }
+        }
+        else
+        {
+            if (distinct.Contains(IdpCapability.LocalPassword))
+            {
+                throw new DomainValidationException(DomainErrorMessages.IdentityProvider.LocalPasswordReservedForLocal);
+            }
+
+            if (distinct.Count == 0)
+            {
+                throw new DomainValidationException(DomainErrorMessages.IdentityProvider.CapabilitiesRequired);
+            }
+        }
+
+        return distinct.AsReadOnly();
     }
 }

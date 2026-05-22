@@ -2,7 +2,7 @@ namespace IdPPlatform.Application.Services.IdentityProvider;
 
 public interface IIdentityProviderService
 {
-    Task<Guid> AddAsync(AddIdentityProviderRequest request, CancellationToken cancellationToken = default);
+    Task<AddIdentityProviderResult> AddAsync(AddIdentityProviderRequest request, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(UpdateIdentityProviderRequest request, CancellationToken cancellationToken = default);
 

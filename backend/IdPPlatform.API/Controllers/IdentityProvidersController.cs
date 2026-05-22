@@ -33,17 +33,18 @@ public sealed class IdentityProvidersController : V1ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Add([FromBody] AddIdentityProviderBody body, CancellationToken cancellationToken)
     {
-        var id = await _identityProviderService.AddAsync(
+        var result = await _identityProviderService.AddAsync(
             new AddIdentityProviderRequest
             {
                 Alias = body.Alias,
                 DisplayName = body.DisplayName,
                 ProviderType = body.ProviderType,
+                Capabilities = body.Capabilities,
                 ConfigJson = body.ConfigJson
             },
             cancellationToken);
 
-        return Ok(new { id });
+        return Ok(new { id = result.Id, warnings = result.Warnings });
     }
 
     [HttpPatch("{id:guid}")]
@@ -57,6 +58,7 @@ public sealed class IdentityProvidersController : V1ApiControllerBase
             {
                 Id = id,
                 DisplayName = body.DisplayName,
+                Capabilities = body.Capabilities,
                 ConfigJson = body.ConfigJson
             },
             cancellationToken);
@@ -86,12 +88,16 @@ public sealed class IdentityProvidersController : V1ApiControllerBase
 
         public required IdentityProviderType ProviderType { get; init; }
 
+        public required IReadOnlyCollection<IdpCapability> Capabilities { get; init; }
+
         public string? ConfigJson { get; init; }
     }
 
     public sealed record UpdateIdentityProviderBody
     {
         public required string DisplayName { get; init; }
+
+        public IReadOnlyCollection<IdpCapability>? Capabilities { get; init; }
 
         public string? ConfigJson { get; init; }
     }

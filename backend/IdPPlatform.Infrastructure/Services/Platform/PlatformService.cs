@@ -146,6 +146,7 @@ public sealed class PlatformService : IPlatformService
                     PlatformDefaults.LocalIdentityProvider.Alias,
                     PlatformDefaults.LocalIdentityProvider.DisplayName,
                     IdentityProviderType.Local,
+                    new[] { IdpCapability.LocalPassword },
                     enabled: true);
                 await _identityProviders.AddAsync(localIdp, transactionCt);
             }

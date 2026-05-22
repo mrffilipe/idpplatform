@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using IdPPlatform.API.Components;
 using IdPPlatform.API.Middlewares;
 using IdPPlatform.Domain.Constants;
 using IdPPlatform.Infrastructure.Configurations;
@@ -13,13 +14,17 @@ using TenancyKit.Core;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddControllersWithViews()
+    .AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+// Blazor Web App with Static Server Rendering. Used by /account/login and /account/register
+// to render modern UI server-side; same security profile as the previous MVC Razor pages.
+builder.Services.AddRazorComponents();
 
 builder.Services
     .AddApiVersioning(options =>
@@ -50,6 +55,16 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = rateLimitOptions.BootstrapPermitLimit,
                 Window = TimeSpan.FromMinutes(rateLimitOptions.BootstrapWindowMinutes),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("account_register", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.AccountRegisterPermitLimit,
+                Window = TimeSpan.FromMinutes(rateLimitOptions.AccountRegisterWindowMinutes),
                 QueueLimit = 0
             }));
 });
@@ -86,7 +101,10 @@ app.UseAuthentication();
 app.UseMultiTenancy<TenantInfoAdapter>();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+app.UseAntiforgery();
+
 app.MapControllers();
-app.MapDefaultControllerRoute();
+app.MapRazorComponents<App>();
 
 app.Run();

@@ -191,10 +191,23 @@ curl http://localhost:5000/v1.0/platform/status
 ### Login
 
 1. Clique em **"Entrar na plataforma"**
-2. Você será redirecionado para `/account/login` no backend
+2. Você será redirecionado para `/account/login` no backend (página moderna em Blazor SSR, sem popup para o Google)
 3. Informe o email e senha configurados no bootstrap (ex: `admin@localhost` / `SuaSenhaSegura@123`)
 4. Após autenticar, o backend redireciona para o callback OIDC
 5. O frontend salva os tokens e você acessa o painel
+
+### Self-registration (novos usuários)
+
+Para usuários que ainda NÃO têm conta na plataforma (cenário comum SaaS):
+
+1. A partir de qualquer app cliente (ex.: Pulse CRM) o usuário clica em "Entrar" e é redirecionado para `/connect/authorize`.
+2. A página de login do IdP exibe o link **Criar conta** apontando para `/account/register`.
+3. O usuário preenche email, senha (respeitando `PasswordPolicy`) e nome. O endpoint é rate-limited pela policy `account_register`.
+4. Após o sucesso a plataforma cria `User` + `UserCredential` e autentica o usuário via cookie — NÃO cria tenant nem membership ainda.
+5. O usuário é redirecionado de volta para `/connect/authorize`; o app cliente recebe o `code` OIDC.
+6. O app detecta ausência de `tid` no access token e dispara seu fluxo de onboarding, chamando `POST /v1.0/auth/subscribe` com tenant + plano para vincular o usuário a um tenant. Após o refresh do token, o novo access token traz `tid` / `mid`.
+
+Esse modelo central significa que apps cliente NUNCA implementam tela própria de cadastro; a coleta de senha acontece apenas no domínio do IdP.
 
 ---
 
@@ -217,6 +230,20 @@ Vá em **Applications** → **Nova application**. Após criar, acesse os detalhe
 Como platform admin, acesse **Identity Providers** → **Adicionar IdP**. O provedor `local` (bootstrap) permanece habilitado para email/senha.
 
 Os campos sensíveis das credenciais (Firebase `ServiceAccount`, `WebApiKey`, etc.) são armazenados **criptografados em repouso** via ASP.NET Core Data Protection. Os valores em texto puro só são informados na criação/edição e nunca são retornados em endpoints `GET`.
+
+#### Capabilities
+
+Cada identity provider declara uma ou mais flags `IdpCapability`. O formulário admin oferece checkboxes:
+
+| Capability | Permitido em | Política de conflito |
+|------------|--------------|----------------------|
+| `LocalPassword` | Apenas `Local` (hard-lock) | Somente **um** provider ativo pode anunciá-la. Tentar adicionar segundo falha. |
+| `GoogleSocial` | Firebase, Cognito, Generic | Adicionar segundo provider habilitado retorna `warnings` mas é aceito. |
+| `MicrosoftSocial` | Firebase, Cognito, Generic | Warning em conflito. |
+| `AppleSocial` | Firebase, Cognito, Generic | Warning em conflito. |
+| `GenericOidc` | Cognito, Generic | Warning em conflito. |
+
+O hard-lock para `LocalPassword` espelha a prática de IdPs corporativos (Microsoft Entra, etc.): uma única fonte de email/senha mantém account linking determinístico e evita ambiguidade na UI ("qual formulário é o legítimo?"). Os socials são mais flexíveis: cenários legítimos multi-realm rodam dois Google em paralelo; o warning só sinaliza ao admin para conferir.
 
 #### Firebase + Google (login federado funcional)
 

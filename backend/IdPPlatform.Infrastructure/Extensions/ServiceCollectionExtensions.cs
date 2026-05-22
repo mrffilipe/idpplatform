@@ -59,6 +59,11 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<SecretProtectionOptions>, SecretProtectionOptionsValidator>();
 
+        services.AddOptions<PasswordPolicyOptions>()
+            .Bind(configuration.GetSection(PasswordPolicyOptions.Section))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<PasswordPolicyOptions>, PasswordPolicyOptionsValidator>();
+
         services.AddSecretProtection(configuration);
 
         services.AddHttpContextAccessor();

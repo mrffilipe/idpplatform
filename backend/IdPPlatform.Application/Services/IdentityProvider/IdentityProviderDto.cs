@@ -13,4 +13,6 @@ public sealed record IdentityProviderDto
     public required IdentityProviderType ProviderType { get; init; }
 
     public required bool Enabled { get; init; }
+
+    public required IReadOnlyCollection<IdpCapability> Capabilities { get; init; }
 }

@@ -18,6 +18,16 @@ public sealed class RateLimitOptionsValidator : IValidateOptions<RateLimitOption
             errors.Add("RateLimit:BootstrapWindowMinutes must be greater than zero.");
         }
 
+        if (options.AccountRegisterPermitLimit <= 0)
+        {
+            errors.Add("RateLimit:AccountRegisterPermitLimit must be greater than zero.");
+        }
+
+        if (options.AccountRegisterWindowMinutes <= 0)
+        {
+            errors.Add("RateLimit:AccountRegisterWindowMinutes must be greater than zero.");
+        }
+
         return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
     }
 }

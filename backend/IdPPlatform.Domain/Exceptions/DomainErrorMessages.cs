@@ -143,5 +143,8 @@ public static class DomainErrorMessages
         public const string AliasAlreadyExists = "Identity provider alias already exists.";
         public const string NotFound = "Identity provider not found.";
         public const string CannotDisableLastLocalProvider = "Cannot disable the only active local identity provider.";
+        public const string LocalPasswordReservedForLocal = "The LocalPassword capability is only allowed for the Local provider type.";
+        public const string LocalProviderMustAdvertiseLocalPassword = "The Local provider must advertise the LocalPassword capability.";
+        public const string CapabilitiesRequired = "At least one capability is required for non-Local providers.";
     }
 }

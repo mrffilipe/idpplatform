@@ -25,6 +25,7 @@ IdPPlatform.API             → Controllers ASP.NET Core, Program.cs, middleware
 |-----------|-----------------|
 | `IPlatformService` | Bootstrap e status da plataforma |
 | `IUserService` | Criar/atualizar usuário, listar memberships, linkar identidade externa |
+| `IRegistrationService` | Self-registration (User + UserCredential, sem tenant) |
 | `ITenantService` | CRUD de tenants, convites, aceitar convite |
 | `ITenantRoleService` | CRUD de papéis por tenant |
 | `IMembershipService` | Criar/revogar/atualizar memberships |
@@ -78,6 +79,7 @@ Todas as configurações ficam em `IdPPlatform.API/appsettings.json` (template) 
 | `Email` | `FromAddress`, `Region`, `AccessKeyId`, `SecretAccessKey` | AWS SES para envio de convites |
 | `Redis` | `ConnectionString`, `InstanceName`, `TenantIdentifierCacheMinutes` | Cache distribuído (opcional) |
 | `SecretProtection` | `KeyDirectoryPath`, `ApplicationName` | Keyring do Data Protection usado para cifrar credenciais de IdP em repouso |
+| `PasswordPolicy` | `MinLength`, `RequireDigit`, `RequireLetter` | Política de senha aplicada no self-registration |
 
 Toda Options class tem bind + validação em startup (`IValidateOptions<T>` + `ValidateOnStart()`). Configurações inválidas em produção falham logo na inicialização.
 
@@ -196,7 +198,11 @@ curl http://localhost:5000/v1.0/platform/status
 ### Account / OIDC
 | Método | Path | Auth | Descrição |
 |--------|------|------|-----------|
-| GET/POST | `/account/login` | Público | Login local (cookie MVC) |
+| GET | `/account/login` | Público | Página de login (Blazor Web App Static SSR) |
+| POST | `/account/login` | Público | Handler de credencial local (cookie sign-in) |
+| GET | `/account/register` | Público | Página de self-registration (Blazor SSR) |
+| POST | `/account/register` | Público, rate-limited | Handler de cadastro (cria User + UserCredential) |
+| POST | `/account/external-login` | Público | Handler de login federado (id_token do Firebase) |
 | GET/POST | `/connect/authorize` | Cookie | Endpoint de autorização OIDC |
 | POST | `/connect/token` | Client credentials | Troca de código por token |
 | GET | `/.well-known/openid-configuration` | Público | Discovery OIDC |

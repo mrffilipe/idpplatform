@@ -8,7 +8,7 @@ SPA + API que simulam um CRM SaaS integrado à plataforma: login OIDC, escolha d
 
 - IdP Platform rodando (`http://localhost:5000`) com bootstrap concluído
 - Application + OAuth client criados no painel (ver [../README.md](../README.md))
-- Usuário existente no IdP (login local no bootstrap ou convite)
+- Conta de usuário no IdP — admin do bootstrap, convite aceito, OU nova conta criada pela página central **/account/register** do IdP (o sample não tem tela própria de cadastro).
 - .NET 8 SDK e Node.js LTS
 
 ## Portas (desenvolvimento)
@@ -43,10 +43,11 @@ Abra http://localhost:5173
 
 ## Fluxo de teste
 
-1. **Login** — Entrar com IdP Platform (conta já existente no IdP)
-2. **Onboarding** — Escolher plano (`starter`, `professional`, `enterprise`)
-3. **Pagamento** — Mock aprovado → API chama `auth/subscribe` na plataforma
-4. **Dashboard** — Plano contratado + claims do JWT decodificado
-5. **Contatos** — CRUD local isolado por tenant (`tid` no token)
+1. **Login / Criar conta** — a SPA redireciona para `/connect/authorize`. A tela de login do IdP permite entrar OU seguir "Criar conta" para `/account/register`. Novos usuários ficam autenticados imediatamente após o cadastro.
+2. **Onboarding** — de volta no SPA, a ausência de `tid` direciona o usuário para escolher plano (`starter`, `professional`, `enterprise`) e nome da empresa.
+3. **Pagamento** — mock aprovado → a API do CRM chama `auth/subscribe` na plataforma para criar Tenant + Membership + ApplicationTenant.
+4. **Refresh do token** — o SPA renova o token para obter claims `tid` / `mid`.
+5. **Dashboard** — plano contratado + claims do JWT decodificado.
+6. **Contatos** — CRUD local isolado por tenant (`tid` no token).
 
 Documentação OIDC/JWT do backend: [backend/README.md](./backend/README.md).

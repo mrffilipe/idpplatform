@@ -89,3 +89,15 @@ src/
 
 - Endpoint paths and OAuth client defaults are owned by the backend. When changing them, update the backend constants (`PlatformDefaults`, controllers under `IdPPlatform.API/Controllers/`) **and** the frontend env defaults in the same PR.
 - The discovery document (`/.well-known/openid-configuration`) is the source of truth at runtime; if a backend endpoint moves, the frontend should still work as long as discovery is consulted before fixed paths.
+
+## 12. Account creation and signup
+
+- Self-signup is **owned by the IdP** at `/account/register`. The admin SPA and sample client apps do NOT implement their own registration screens; they only render a "Sign in" button that drives the standard OIDC `authorization_code + PKCE` flow.
+- The IdP login screen always exposes a "Create account" link to `/account/register`, so users without an account are funnelled through the same place regardless of which application initiated the flow.
+- After sign-in, the application detects the absence of a tenant claim (`tid`) in the access token and routes the user into an onboarding flow that calls `POST /v1.0/auth/subscribe`. The frontend never calls a "create user" endpoint directly.
+
+## 13. Identity provider capabilities
+
+- The Identity Providers admin page surfaces the new `IdpCapability` flags (`LocalPassword`, `GoogleSocial`, `MicrosoftSocial`, `AppleSocial`, `GenericOidc`).
+- The form must select at least one capability for non-Local providers, lock `LocalPassword` to the Local provider, and surface backend `warnings` in a dismissible alert when present.
+- The listing must render capabilities as chips alongside the existing alias/type/status columns.

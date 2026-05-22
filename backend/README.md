@@ -25,6 +25,7 @@ IdPPlatform.API             → ASP.NET Core controllers, Program.cs, middleware
 |-----------|----------------|
 | `IPlatformService` | Bootstrap and platform status |
 | `IUserService` | Create/update user, list memberships, link external identity |
+| `IRegistrationService` | Self-registration (User + UserCredential, no tenant) |
 | `ITenantService` | Tenant CRUD, invites, accept invite |
 | `ITenantRoleService` | CRUD of tenant-scoped roles |
 | `IMembershipService` | Create/revoke/update memberships |
@@ -32,7 +33,7 @@ IdPPlatform.API             → ASP.NET Core controllers, Program.cs, middleware
 | `IAuditLogService` | List audit logs |
 | `IAuthService` | Switch/subscribe tenant, manage sessions |
 | `ILocalAuthenticationService` | Local login (email + BCrypt) |
-| `IIdentityProviderService` | CRUD of identity providers (Local, Firebase, Cognito…) |
+| `IIdentityProviderService` | CRUD of identity providers (Local, Firebase, Cognito…) with capability flags |
 
 ### Authentication flow
 
@@ -78,6 +79,7 @@ All configuration lives in `IdPPlatform.API/appsettings.json` (template) and `ap
 | `Email` | `FromAddress`, `Region`, `AccessKeyId`, `SecretAccessKey` | AWS SES for invite delivery |
 | `Redis` | `ConnectionString`, `InstanceName`, `TenantIdentifierCacheMinutes` | Distributed cache (optional) |
 | `SecretProtection` | `KeyDirectoryPath`, `ApplicationName` | Data protection key ring used to encrypt IdP credentials at rest |
+| `PasswordPolicy` | `MinLength`, `RequireDigit`, `RequireLetter` | Password policy enforced on self-registration |
 
 Every Options class is bound and validated at startup (`IValidateOptions<T>` + `ValidateOnStart()`). Misconfigured production deployments fail fast.
 
@@ -199,7 +201,11 @@ curl http://localhost:5000/v1.0/platform/status
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET/POST | `/account/login` | Public | Local login (MVC cookie) |
+| GET | `/account/login` | Public | Login page (Blazor Web App Static SSR) |
+| POST | `/account/login` | Public | Local credential handler (cookie sign-in) |
+| GET | `/account/register` | Public | Self-registration page (Blazor SSR) |
+| POST | `/account/register` | Public, rate-limited | Self-registration handler (creates User + UserCredential) |
+| POST | `/account/external-login` | Public | Federated login handler (Firebase id_token) |
 | GET/POST | `/connect/authorize` | Cookie | OIDC authorization endpoint |
 | POST | `/connect/token` | Client credentials | Code-to-token exchange |
 | GET | `/.well-known/openid-configuration` | Public | OIDC discovery |
@@ -312,11 +318,16 @@ dotnet ef migrations remove \
 
 ```
 IdPPlatform.API/
-├── Controllers/         All REST + MVC controllers (Account, Authorization, WellKnown)
-├── Common/              Base controllers, middlewares, OidcLoginContext
-├── Views/Account/       Login.cshtml (local form)
+├── Components/          Blazor Web App (Static SSR) - login/register pages and shared layout
+│   ├── App.razor            Root document (html/head/body)
+│   ├── Routes.razor         Router
+│   ├── Layout/              AccountLayout (split-screen with hero)
+│   └── Pages/Account/       Login.razor, Register.razor
+├── Controllers/         API controllers (Account POST handlers, Authorization, WellKnown, v1 REST)
+├── Common/              Base controllers, middlewares, OidcLoginContext, FederatedProviderClientConfig
+├── wwwroot/css/         Modern, theme-aware account.css (no framework, no build step)
 ├── appsettings.json     Configuration template
-└── Program.cs           Startup (DI, OIDC, policies, rate limiting)
+└── Program.cs           Startup (DI, OIDC, policies, rate limiting, Razor components)
 
 IdPPlatform.Application/
 ├── Services/            Interfaces and DTOs per aggregate
@@ -328,6 +339,7 @@ IdPPlatform.Application/
 │   ├── Membership/      IMembershipService
 │   ├── Oidc/            IOidcTokenService, IOidcClaimsService, ApplicationClientValidationContext
 │   ├── Platform/        IPlatformService
+│   ├── Registration/    IRegistrationService, IPasswordPolicy
 │   ├── Security/        ISecretProtector
 │   ├── Tenant/          ITenantService
 │   ├── TenantRoles/     ITenantRoleService
@@ -336,7 +348,7 @@ IdPPlatform.Application/
 └── Exceptions/          ApplicationErrorMessages (static messages)
 
 IdPPlatform.Infrastructure/
-├── Configurations/      JwtOptions, BootstrapOptions, DatabaseOptions, SecretProtectionOptions, validators
+├── Configurations/      JwtOptions, BootstrapOptions, DatabaseOptions, SecretProtectionOptions, PasswordPolicyOptions, validators
 ├── Extensions/          AddInfrastructure, AddAggregateServices, AddRepositories, AddServices, AddSecretProtection
 ├── Migrations/          FirstMigration
 ├── Persistence/

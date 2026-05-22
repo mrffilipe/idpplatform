@@ -192,10 +192,23 @@ curl http://localhost:5000/v1.0/platform/status
 ### Sign in
 
 1. Click **"Sign in to the platform"**
-2. You are redirected to `/account/login` on the backend
+2. You are redirected to `/account/login` on the backend (modern Blazor SSR page, no popup for Google)
 3. Enter the email and password configured during bootstrap (e.g., `admin@localhost` / `YourSecurePassword@123`)
 4. After authentication, the backend redirects to the OIDC callback
 5. The frontend stores the tokens and opens the admin console
+
+### Self-registration (new users)
+
+For end users who do NOT yet have an account in the platform (typical SaaS onboarding):
+
+1. From any consumer app (e.g., Pulse CRM) the user clicks "Sign in" and is redirected to `/connect/authorize`.
+2. The IdP login page exposes a **Create account** link to `/account/register`.
+3. The user fills email, password (matching `PasswordPolicy` requirements) and display name. The endpoint is rate-limited by the `account_register` policy.
+4. After successful registration the platform creates a `User` + `UserCredential` and signs the user in via the cookie scheme — NO tenant or membership is created at this point.
+5. The user is redirected back to `/connect/authorize`; the consumer app receives the OIDC `code`.
+6. The consumer app detects the missing `tid` claim in the access token and triggers its onboarding flow, calling `POST /v1.0/auth/subscribe` with tenant + plan to attach the user to a tenant. After a refresh token, the new access token includes `tid` / `mid`.
+
+This central signup model means client apps NEVER implement their own "create account" pages; password collection only happens on the IdP domain.
 
 ---
 
@@ -218,6 +231,20 @@ Go to **Applications** → **New application**. After creation, open the details
 As a platform admin, navigate to **Identity Providers** → **Add IdP**. The `local` provider (bootstrap) stays enabled for email/password.
 
 Identity provider credentials (Firebase `ServiceAccount`, `WebApiKey`, etc.) are stored **encrypted at rest** using ASP.NET Core Data Protection. The plaintext values are required during creation/update only and are never returned by `GET` endpoints.
+
+#### Capabilities
+
+Each identity provider declares one or more `IdpCapability` flags. The admin form surfaces them as checkboxes:
+
+| Capability | Allowed for | Conflict policy |
+|------------|-------------|-----------------|
+| `LocalPassword` | `Local` only (hard-locked) | Only **one** enabled provider can advertise it. Adding a second one fails. |
+| `GoogleSocial` | Firebase, Cognito, Generic | Adding a second enabled provider returns a `warnings` payload but is allowed. |
+| `MicrosoftSocial` | Firebase, Cognito, Generic | Soft warning on conflict. |
+| `AppleSocial` | Firebase, Cognito, Generic | Soft warning on conflict. |
+| `GenericOidc` | Cognito, Generic | Soft warning on conflict. |
+
+The hard-lock for `LocalPassword` mirrors what Microsoft Entra and other enterprise IdPs do: a single source of email/password authentication keeps account linking deterministic and avoids UI ambiguity ("which email/password form is legitimate?"). Social providers are softer: legitimate multi-realm setups can run two Google connections side by side and you only get a warning so the admin acknowledges the conflict.
 
 #### Firebase + Google (working federated login)
 

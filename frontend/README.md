@@ -182,18 +182,18 @@ const isPlatformAdmin = platformRoles.includes('plat_admin')
 
 The "Identity Providers" navigation item and the application creation form are only visible to `plat_admin`.
 
-### Identity Providers — `ConfigJson` schemas
+### Identity Providers — `ConfigJson` schemas and capabilities
 
-The **Identity Providers** page (`IdentityProvidersPage.tsx`) guides the operator by type:
+The **Identity Providers** page (`IdentityProvidersPage.tsx`) guides the operator by type and now collects `IdpCapability` flags (LocalPassword / GoogleSocial / MicrosoftSocial / AppleSocial / GenericOidc) via checkboxes. The form locks `LocalPassword` to the Local provider; backend `warnings` from social conflicts are surfaced in a dismissible alert.
 
-| Type | JSON fields | UI note |
-|------|-------------|---------|
-| Local | none required | no `ConfigJson` |
-| Firebase | `projectId`, `webApiKey`, `serviceAccount` | UI guide (`FirebaseConfigHelp`): **not** the Web app `firebaseConfig`; `serviceAccount` = the Admin SDK service account `.json` file |
-| Cognito | `userPoolId`, `region`, `clientId` | notice: login not yet available |
-| Generic | `issuer`, `jwksUri`, `audience` | notice: login not yet available |
+| Type | JSON fields | Default capabilities | UI note |
+|------|-------------|----------------------|---------|
+| Local | none required | LocalPassword (locked) | no `ConfigJson` |
+| Firebase | `projectId`, `webApiKey`, `serviceAccount` | GoogleSocial | UI guide (`FirebaseConfigHelp`): **not** the Web app `firebaseConfig`; `serviceAccount` = the Admin SDK service account `.json` file |
+| Cognito | `userPoolId`, `region`, `clientId` | GenericOidc | notice: login not yet available |
+| Generic | `issuer`, `jwksUri`, `audience` | GenericOidc | notice: login not yet available |
 
-TypeScript types that mirror the schemas live in `src/types/identityProviders.ts` (`FirebaseProviderConfig`, etc.). `LoginPage.tsx` of the admin SPA does **not** change the OIDC flow — it only redirects to the backend authorize endpoint.
+TypeScript types that mirror the schemas live in `src/types/identityProviders.ts` (`FirebaseProviderConfig`, `IdpCapability`, etc.). `LoginPage.tsx` of the admin SPA does **not** change the OIDC flow — it only redirects to the backend authorize endpoint. Self-signup for end users is owned by the IdP at `/account/register`, never by client apps.
 
 ---
 

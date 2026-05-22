@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IdPPlatform.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260521003114_FirstMigration")]
+    [Migration("20260522145732_FirstMigration")]
     partial class FirstMigration
     {
         /// <inheritdoc />
@@ -296,8 +296,6 @@ namespace IdPPlatform.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("auth_sessions", (string)null);
                 });
 
@@ -354,6 +352,11 @@ namespace IdPPlatform.Infrastructure.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")
                         .HasColumnName("alias");
+
+                    b.Property<int[]>("Capabilities")
+                        .IsRequired()
+                        .HasColumnType("integer[]")
+                        .HasColumnName("capabilities");
 
                     b.Property<string>("ConfigJson")
                         .HasColumnType("json")
@@ -962,20 +965,9 @@ namespace IdPPlatform.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("IdPPlatform.Domain.Entities.AuthSession", b =>
-                {
-                    b.HasOne("IdPPlatform.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("IdPPlatform.Domain.Entities.ExternalIdentity", b =>
                 {
-                    b.HasOne("IdPPlatform.Domain.Entities.User", "User")
+                    b.HasOne("IdPPlatform.Domain.Entities.User", null)
                         .WithMany("ExternalIdentities")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1002,8 +994,6 @@ namespace IdPPlatform.Infrastructure.Migrations
 
                     b.Navigation("Email")
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("IdPPlatform.Domain.Entities.OidcAuthorizationCode", b =>

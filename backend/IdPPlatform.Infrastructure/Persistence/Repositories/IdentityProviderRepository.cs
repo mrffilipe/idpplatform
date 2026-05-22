@@ -55,6 +55,21 @@ public sealed class IdentityProviderRepository : IIdentityProviderRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<IdentityProvider>> ListEnabledByCapabilityAsync(
+        IdpCapability capability,
+        CancellationToken cancellationToken = default)
+    {
+        // Filtering happens in memory after loading enabled providers because the value-converted
+        // collection (IReadOnlyCollection<IdpCapability>) does not translate to SQL reliably across
+        // EF Core providers. The set of enabled providers is small (typically <10), so this is fine.
+        var enabled = await _context.IdentityProviders
+            .Where(x => x.Enabled)
+            .OrderBy(x => x.Alias)
+            .ToListAsync(cancellationToken);
+
+        return enabled.Where(x => x.Capabilities.Contains(capability)).ToList();
+    }
+
     public async Task<IReadOnlyList<IdentityProvider>> ListAllAsync(CancellationToken cancellationToken = default)
     {
         return await _context.IdentityProviders

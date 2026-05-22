@@ -88,6 +88,30 @@ Dependency direction: `API → Application → Domain`, `Infrastructure → Appl
 - This layout matches IdentityServer / OpenIddict conventions and is OIDC-compliant because every endpoint is advertised through discovery. Do not change URL paths without simultaneously updating discovery, frontend `httpPaths.ts`, and the sample apps.
 - New optional endpoints (`/connect/introspect`, `/connect/revoke`, `/connect/register`) MUST be advertised in the discovery document the same release they are shipped.
 
+## 9.1 Identity provider capabilities
+
+- Every `IdentityProvider` declares one or more `IdpCapability` values (`LocalPassword`, `GoogleSocial`, `MicrosoftSocial`, `AppleSocial`, `GenericOidc`).
+- Hard invariant: `LocalPassword` is allowed ONLY for `IdentityProviderType.Local`. The domain (`IdentityProvider`) and the application service (`IdentityProviderService`) BOTH enforce this — never bypass.
+- Hard invariant: only **one** enabled provider may advertise `LocalPassword` at a time. `IdentityProviderService.AddAsync` and `EnableAsync` query `ListEnabledByCapabilityAsync(IdpCapability.LocalPassword)` before persisting.
+- Soft conflict: when adding a provider that advertises a social capability already advertised by another enabled provider, return a `warnings` payload (do NOT block). Surface the warning to the admin via the API response and the admin console.
+- New providers MUST be backfilled with their capabilities via migration when introduced.
+
+## 9.2 Self-registration
+
+- Self-signup is exposed centrally at `/account/register` and implemented by `IRegistrationService`. Consumer applications must NOT expose private signup endpoints; they redirect to `/connect/authorize` which surfaces "Create account" from the IdP login page.
+- Password policy is configured via `PasswordPolicyOptions` (section `PasswordPolicy`) and enforced by `IPasswordPolicy`. Defaults: 12 chars, at least one letter and one digit.
+- Self-registration creates a `User` + `UserCredential` only. It does NOT create a tenant or membership — that happens after sign-in through `POST /v1.0/auth/subscribe`.
+- The endpoint is rate-limited by the `account_register` policy (configurable under `RateLimit:AccountRegister*`).
+- Registration is disabled automatically when no IdP with `LocalPassword` is enabled; the service raises `Registration.LocalPasswordDisabled`.
+
+## 9.3 UI rendering
+
+- Server-rendered pages for the IdP UI (login, register, future account screens) are implemented with **Blazor Web App Static Server Rendering** (`AddRazorComponents` + `MapRazorComponents<App>`) under `IdPPlatform.API/Components/`.
+- The previous MVC Razor views under `/Views/` were removed. `AddControllersWithViews()` was replaced by `AddControllers()`; controllers are used only for JSON APIs and form POST handlers (`/account/login`, `/account/external-login`, `/account/logout`).
+- The legacy Firebase popup flow was replaced by `signInWithRedirect` (full-page redirect to `accounts.google.com`, returns to `/account/login`, JS auto-submits the encoded id token to the controller). NEVER reintroduce popups: they break on mobile, are blocked by browsers, and weaken the phishing signal in the address bar.
+- Static assets live in `IdPPlatform.API/wwwroot/`. The account stylesheet is `css/account.css` and uses only CSS variables + `prefers-color-scheme` for theming (no framework, no build step).
+- Antiforgery: every form (Blazor `EditForm` or plain HTML) MUST include the antiforgery token. Blazor `EditForm` adds it automatically; plain forms render `<input type="hidden" name="__RequestVerificationToken" value="@_antiforgeryToken" />` populated from `IAntiforgery.GetAndStoreTokens(HttpContext)`.
+
 ## 10. Comments and documentation
 
 - All comments are written in **English**. Translate or remove Portuguese comments when touching a file.

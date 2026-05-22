@@ -1,0 +1,387 @@
+/* IdP Platform - Account pages (Login, Register)
+   Modern, accessible, mobile-first design. Light/dark themes automatic via prefers-color-scheme
+   with no JavaScript. Avoids any CSS framework to keep the surface area small. */
+
+:root {
+    --background: #f7f7fb;
+    --background-elevated: #ffffff;
+    --foreground: #0b0d12;
+    --foreground-muted: #4b5060;
+    --foreground-subtle: #7a7f8e;
+    --border: rgba(11, 13, 18, 0.08);
+    --border-strong: rgba(11, 13, 18, 0.16);
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-foreground: #ffffff;
+    --danger: #b3261e;
+    --danger-bg: #fdecea;
+    --focus-ring: rgba(79, 70, 229, 0.35);
+    --hero-from: #4f46e5;
+    --hero-to: #7c3aed;
+    --shadow-card: 0 30px 80px -40px rgba(15, 18, 30, 0.35), 0 12px 30px -18px rgba(15, 18, 30, 0.2);
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #0a0a0f;
+        --background-elevated: #14141d;
+        --foreground: #f4f4f8;
+        --foreground-muted: #c5c8d3;
+        --foreground-subtle: #8a8e9c;
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.18);
+        --primary: #818cf8;
+        --primary-hover: #a5b4fc;
+        --primary-foreground: #1b1b27;
+        --danger: #f87171;
+        --danger-bg: rgba(248, 113, 113, 0.12);
+        --focus-ring: rgba(129, 140, 248, 0.45);
+        --hero-from: #312e81;
+        --hero-to: #5b21b6;
+        --shadow-card: 0 30px 80px -40px rgba(0, 0, 0, 0.7), 0 12px 30px -18px rgba(0, 0, 0, 0.5);
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+.account-shell {
+    min-height: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+    .account-shell {
+        grid-template-columns: minmax(380px, 1fr) minmax(420px, 540px);
+    }
+}
+
+.account-hero {
+    display: none;
+    position: relative;
+    padding: clamp(2.5rem, 4vw, 4.5rem);
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.12), transparent 45%),
+        linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
+    overflow: hidden;
+}
+
+.account-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(transparent 95%, rgba(255, 255, 255, 0.08) 95%),
+        linear-gradient(90deg, transparent 95%, rgba(255, 255, 255, 0.08) 95%);
+    background-size: 40px 40px;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+    .account-hero {
+        display: flex;
+        align-items: flex-end;
+    }
+}
+
+.account-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 28rem;
+}
+
+.account-hero-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.account-hero-title {
+    font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+    line-height: 1.15;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+}
+
+.account-hero-subtitle {
+    font-size: 1rem;
+    line-height: 1.55;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.account-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    background: var(--background);
+}
+
+.account-card {
+    width: 100%;
+    max-width: 24rem;
+    background: var(--background-elevated);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: clamp(1.75rem, 3vw, 2.5rem);
+    border: 1px solid var(--border);
+}
+
+.account-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.account-header h1 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.5rem, 2vw, 1.875rem);
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+}
+
+.account-subtitle {
+    margin: 0;
+    color: var(--foreground-muted);
+    font-size: 0.95rem;
+}
+
+.account-alert {
+    border-radius: var(--radius-md);
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid currentColor;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.account-notice {
+    border-radius: var(--radius-md);
+    background: rgba(79, 70, 229, 0.08);
+    color: var(--primary);
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+}
+
+.account-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.account-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.account-field label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--foreground-muted);
+    letter-spacing: 0.01em;
+}
+
+.account-field input {
+    appearance: none;
+    width: 100%;
+    padding: 0.7rem 0.875rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--background-elevated);
+    color: var(--foreground);
+    font-size: 0.95rem;
+    font-family: inherit;
+    line-height: 1.4;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.account-field input::placeholder {
+    color: var(--foreground-subtle);
+}
+
+.account-field input:focus,
+.account-field input:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.account-field .validation-message {
+    color: var(--danger);
+    font-size: 0.8125rem;
+    margin-top: 0.1rem;
+}
+
+.account-hint {
+    color: var(--foreground-subtle);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin-top: 0.15rem;
+}
+
+.account-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 150ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+}
+
+.account-btn:focus,
+.account-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.account-btn-primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+    width: 100%;
+}
+
+.account-btn-primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.account-btn-primary:active {
+    transform: translateY(0);
+}
+
+.account-btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+}
+
+.account-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--foreground-subtle);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.account-divider::before,
+.account-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-strong);
+}
+
+.account-social {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.account-btn-social {
+    background: var(--background-elevated);
+    color: var(--foreground);
+    border-color: var(--border-strong);
+    width: 100%;
+}
+
+.account-btn-social:hover {
+    background: rgba(127, 132, 145, 0.08);
+}
+
+.account-btn-google .account-social-icon {
+    display: inline-flex;
+    color: #4285f4;
+}
+
+.account-social-icon {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+}
+
+.account-hidden-form {
+    display: none;
+}
+
+.account-footer {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--foreground-muted);
+}
+
+.account-footer a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.account-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Blazor validation message component */
+.validation-message {
+    color: var(--danger);
+    font-size: 0.8125rem;
+}
+
+/* Blur the hero subtly on small screens when not displayed (defensive) */
+@media (max-width: 1023px) {
+    .account-card {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+}

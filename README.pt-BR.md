@@ -50,7 +50,9 @@ rules/      Padrões e convenções: backend-rules.md, frontend-rules.md
 | **Multi-tenant** | Usuários pertencem a múltiplos tenants com papéis independentes. |
 | **Platform admin** | Usuários com `prole=plat_admin` gerenciam tenants, applications e IdPs globais. |
 | **Applications OAuth** | Registro de apps consumidoras com clients públicos (PKCE) ou confidenciais. |
-| **Identity Providers** | Federação extensível: Local (padrão), Firebase, Cognito, Genérico. |
+| **Identity Providers** | Federação extensível: Local (padrão), Firebase, Cognito, Genérico. Cada um declara flags `IdpCapability` (LocalPassword, GoogleSocial, etc.) com hard-lock para email/senha e warnings em conflito de socials. |
+| **Self-registration** | Página central `/account/register` no IdP, com política de senha configurável e rate limit. Apps cliente redirecionam para OIDC; nunca expõem endpoint próprio de cadastro. |
+| **UI moderna de login** | Login e cadastro renderizados via Blazor Web App Static SSR (sem MVC views). Google login usa `signInWithRedirect` (mesma aba, sem popup). |
 | **Proteção de segredos** | Credenciais dos IdPs (Firebase ServiceAccount, WebApiKey) são criptografadas em repouso via ASP.NET Core Data Protection. |
 | **Audit logs** | Rastreio de eventos por tenant. |
 
