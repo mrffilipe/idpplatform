@@ -4,7 +4,6 @@ using IdPPlatform.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace IdPPlatform.Infrastructure.Persistence.Configurations;
 
@@ -38,20 +37,20 @@ public sealed class IdentityProviderConfiguration : BaseEntityConfiguration<Iden
             .HasColumnName("config_json")
             .HasColumnType("json");
 
-        var capabilityConverter = new ValueConverter<IReadOnlyCollection<IdpCapability>, int[]>(
-            v => v.Select(c => (int)c).ToArray(),
-            v => v.Select(c => (IdpCapability)c).ToList().AsReadOnly());
-
-        // Comparer needed because EF Core does not know how to track changes on a custom collection.
-        var capabilityComparer = new ValueComparer<IReadOnlyCollection<IdpCapability>>(
-            (a, b) => (a ?? Array.Empty<IdpCapability>()).SequenceEqual(b ?? Array.Empty<IdpCapability>()),
-            v => v.Aggregate(0, (hash, c) => HashCode.Combine(hash, c)),
-            v => v.ToList().AsReadOnly());
+        // Store as PostgreSQL integer[]; List is required so Npgsql receives int[] from the converter
+        // (IReadOnlyCollection breaks parameter binding with InvalidCastException).
+        var capabilityComparer = new ValueComparer<List<IdpCapability>>(
+            (left, right) => (left ?? new List<IdpCapability>()).SequenceEqual(right ?? new List<IdpCapability>()),
+            capabilities => capabilities.Aggregate(0, (hash, c) => HashCode.Combine(hash, (int)c)),
+            capabilities => capabilities.ToList());
 
         builder.Property(x => x.Capabilities)
             .HasColumnName("capabilities")
             .HasColumnType("integer[]")
-            .HasConversion(capabilityConverter, capabilityComparer)
+            .HasConversion(
+                capabilities => capabilities.Select(c => (int)c).ToArray(),
+                values => values.Select(v => (IdpCapability)v).ToList(),
+                capabilityComparer)
             .IsRequired();
 
         builder.HasIndex(x => x.Alias)

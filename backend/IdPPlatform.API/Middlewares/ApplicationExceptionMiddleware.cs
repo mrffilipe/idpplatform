@@ -3,6 +3,7 @@ using System.Text.Json;
 using IdPPlatform.API.Common;
 using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Domain.Exceptions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Middlewares;
@@ -72,8 +73,9 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (Exception ex)
         {
-            var detail = context.RequestServices.GetService<IHostEnvironment>()?.IsDevelopment() == true
-                ? ex.Message
+            var isDevelopment = context.RequestServices.GetService<IHostEnvironment>()?.IsDevelopment() == true;
+            var detail = isDevelopment
+                ? FormatDevelopmentExceptionDetail(ex)
                 : ApiErrorMessages.UnexpectedErrorDetail;
 
             await WriteProblemAsync(
@@ -82,6 +84,17 @@ public sealed class ApplicationExceptionMiddleware
                 ApiErrorMessages.UnhandledServerErrorTitle,
                 detail);
         }
+    }
+
+    private static string FormatDevelopmentExceptionDetail(Exception ex)
+    {
+        var parts = new List<string>();
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            parts.Add(current.Message);
+        }
+
+        return string.Join(" -> ", parts);
     }
 
     private static async Task WriteProblemAsync(

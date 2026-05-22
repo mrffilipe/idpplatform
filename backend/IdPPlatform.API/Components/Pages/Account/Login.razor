@@ -7,7 +7,7 @@
 @inject IIdentityProviderRepository IdentityProviders
 @inject IIdentityProviderConfigCipher ConfigCipher
 @inject IAntiforgery Antiforgery
-@inject HttpContext HttpContext
+@inject IHttpContextAccessor HttpContextAccessor
 
 <HeadContent>
     <title>Sign in - IdP Platform</title>
@@ -201,9 +201,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _antiforgeryToken = Antiforgery.GetAndStoreTokens(HttpContext).RequestToken ?? string.Empty;
+        var httpContext = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException("HTTP context is not available.");
 
-        var enabled = await IdentityProviders.ListEnabledAsync(HttpContext.RequestAborted);
+        _antiforgeryToken = Antiforgery.GetAndStoreTokens(httpContext).RequestToken ?? string.Empty;
+
+        var enabled = await IdentityProviders.ListEnabledAsync(httpContext.RequestAborted);
         _showLocal = enabled.Any(p => p.ProviderType == IdentityProviderType.Local && p.Capabilities.Contains(IdpCapability.LocalPassword));
 
         _federated = enabled

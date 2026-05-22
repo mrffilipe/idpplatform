@@ -10,7 +10,7 @@
 @using Microsoft.AspNetCore.Mvc
 @using Microsoft.AspNetCore.RateLimiting
 @inject IRegistrationService RegistrationService
-@inject HttpContext HttpContext
+@inject IHttpContextAccessor HttpContextAccessor
 @attribute [EnableRateLimiting("account_register")]
 
 <HeadContent>
@@ -81,7 +81,13 @@
 
     protected override void OnInitialized()
     {
-        if (!HttpMethods.IsPost(HttpContext.Request.Method) && !string.IsNullOrEmpty(ReturnUrl))
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is null)
+        {
+            return;
+        }
+
+        if (!HttpMethods.IsPost(httpContext.Request.Method) && !string.IsNullOrEmpty(ReturnUrl))
         {
             Input.ReturnUrl = ReturnUrl;
         }
@@ -90,6 +96,9 @@
     private async Task HandleSubmitAsync()
     {
         _errorMessage = null;
+
+        var httpContext = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException("HTTP context is not available.");
 
         if (!string.Equals(Input.Password, Input.PasswordConfirm, StringComparison.Ordinal))
         {
@@ -106,7 +115,7 @@
                     Password = Input.Password,
                     DisplayName = Input.DisplayName
                 },
-                HttpContext.RequestAborted);
+                httpContext.RequestAborted);
 
             var redirectTarget = string.IsNullOrWhiteSpace(Input.ReturnUrl) ? "/" : Input.ReturnUrl;
 
@@ -119,7 +128,7 @@
                 new(ClaimTypes.Email, result.Email)
             };
 
-            await HttpContext.SignInAsync(
+            await httpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
                 new AuthenticationProperties
@@ -128,7 +137,7 @@
                     RedirectUri = redirectTarget
                 });
 
-            HttpContext.Response.Redirect(redirectTarget);
+            httpContext.Response.Redirect(redirectTarget);
         }
         catch (DomainBusinessRuleException ex)
         {

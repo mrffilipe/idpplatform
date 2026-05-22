@@ -24,6 +24,7 @@ builder.Services
 
 // Blazor Web App with Static Server Rendering. Used by /account/login and /account/register
 // to render modern UI server-side; same security profile as the previous MVC Razor pages.
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddRazorComponents();
 
 builder.Services

@@ -25,7 +25,7 @@ public sealed class IdentityProvider : BaseEntity
     /// Hard-locked invariant: only <see cref="IdentityProviderType.Local"/> may advertise
     /// <see cref="IdpCapability.LocalPassword"/>, and a Local provider must advertise it.
     /// </summary>
-    public IReadOnlyCollection<IdpCapability> Capabilities { get; private set; } = Array.Empty<IdpCapability>();
+    public List<IdpCapability> Capabilities { get; private set; } = new();
 
     private IdentityProvider()
     {
@@ -83,7 +83,7 @@ public sealed class IdentityProvider : BaseEntity
         Capabilities = NormalizeCapabilities(ProviderType, capabilities);
     }
 
-    private static IReadOnlyCollection<IdpCapability> NormalizeCapabilities(
+    private static List<IdpCapability> NormalizeCapabilities(
         IdentityProviderType providerType,
         IEnumerable<IdpCapability> capabilities)
     {
@@ -114,6 +114,6 @@ public sealed class IdentityProvider : BaseEntity
             }
         }
 
-        return distinct.AsReadOnly();
+        return distinct;
     }
 }

@@ -1,6 +1,6 @@
 import { redirect } from 'react-router'
 import { getPlatformStatus } from '../services/platformService'
-import { getAuthSession } from '../utils/authStorage'
+import { clearAuthSession, getAuthSession } from '../utils/authStorage'
 import { getSelectedTenantId } from '../utils/tenantStorage'
 import type { LoaderFunctionArgs } from 'react-router'
 
@@ -11,6 +11,9 @@ export interface LoginLoaderData {
 export async function requireAuthLoader({ request }: LoaderFunctionArgs): Promise<null> {
   const status = await getPlatformStatus()
   if (status.requiresBootstrap) {
+    if (getAuthSession()?.accessToken) {
+      clearAuthSession()
+    }
     throw redirect('/login')
   }
 
@@ -25,6 +28,15 @@ export async function requireAuthLoader({ request }: LoaderFunctionArgs): Promis
 }
 
 export async function loginLoader({ request }: LoaderFunctionArgs): Promise<LoginLoaderData> {
+  const status = await getPlatformStatus()
+
+  if (status.requiresBootstrap) {
+    if (getAuthSession()?.accessToken) {
+      clearAuthSession()
+    }
+    return { requiresBootstrap: true }
+  }
+
   const session = getAuthSession()
   if (session?.accessToken) {
     const url = new URL(request.url)
@@ -32,8 +44,7 @@ export async function loginLoader({ request }: LoaderFunctionArgs): Promise<Logi
     throw redirect(returnUrl)
   }
 
-  const status = await getPlatformStatus()
-  return { requiresBootstrap: status.requiresBootstrap }
+  return { requiresBootstrap: false }
 }
 
 export async function requireTenantLoader(args: LoaderFunctionArgs): Promise<null> {
