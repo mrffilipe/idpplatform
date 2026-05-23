@@ -48,6 +48,19 @@ cp .env.example .env
 
 Defaults are kept in sync with the backend constants (`PlatformDefaults.AdminConsole.ClientId` and `DefaultRedirectUris`) and `appsettings.Development.json` — change them together.
 
+### Docker image
+
+The admin SPA is built into a static nginx image ([`Dockerfile`](./Dockerfile); context: repository root). All `VITE_*` values are **fixed at image build time** via `--build-arg`. Changing the public API URL or OAuth redirect requires rebuilding and republishing the image.
+
+```bash
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
+  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
+  -t <dockerhub-username>/idpplatform-frontend:<tag> .
+```
+
+See [../docker/README.md](../docker/README.md) for compose, push to Docker Hub, and consumer setup.
+
 ---
 
 ## Run

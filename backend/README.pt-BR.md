@@ -99,6 +99,18 @@ Em desenvolvimento local, a seção `Bootstrap` no `appsettings.Development.json
 
 > Após o bootstrap, remova `Bootstrap__*` do ambiente em produção. Elas só são necessárias na primeira inicialização.
 
+### Imagem Docker da API
+
+A API é empacotada em imagem multi-stage em [`Dockerfile`](./Dockerfile) (contexto de build: raiz do repositório). Veja [../docker/README.pt-BR.md](../docker/README.pt-BR.md) para compose, build/push e operação.
+
+| Tópico | Detalhe |
+|--------|---------|
+| Porta | `8080` no container; compose mapeia para `5000` no host por padrão |
+| Migrations | Bundle EF executado quando `Database__ApplyMigrationsOnStartup=true` |
+| Chave JWT | `Jwt__SigningKeyPem` ou volume com `Jwt__SigningKeyPath` |
+| Data Protection | Volume em `/app/keys/data-protection` |
+| Health | `GET /v1.0/platform/status` na porta `8080` |
+
 ### Chave RSA para OIDC
 
 O JWT é assinado com RSA (RS256). Gere a chave antes de iniciar.
@@ -134,6 +146,16 @@ O JSON de configuração dos IdPs (`IdentityProvider.ConfigJson`) costuma conter
 - O keyring é persistido em `SecretProtection:KeyDirectoryPath` (default `keys/data-protection`). **Perder essas chaves significa perder o acesso aos segredos armazenados** — faça backup junto com o banco.
 
 `IdentityProviderDto` propositalmente omite `ConfigJson`; segredos nunca são devolvidos para consumidores da API.
+
+---
+
+## Build da imagem Docker
+
+Na raiz do repositório:
+
+```bash
+docker build -f backend/Dockerfile -t <usuario-dockerhub>/idpplatform-api:<tag> .
+```
 
 ---
 

@@ -122,6 +122,7 @@ export function normalizeApplication(raw: unknown): Application {
     name: readString(record, 'name', 'Name'),
     slug: readString(record, 'slug', 'Slug'),
     type: normalizeApplicationType(record.type ?? record.Type),
+    isSystem: readBool(record, 'isSystem', 'IsSystem'),
   }
 }
 

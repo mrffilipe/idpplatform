@@ -168,7 +168,7 @@ export function ApplicationDetailPage() {
         title={application?.name ?? 'Application'}
         description={application ? `Slug: ${application.slug}` : 'Carregando detalhes...'}
         actions={
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
             {isSystemApp ? (
               <Chip label="Sistema" size="small" color="default" variant="outlined" />
             ) : null}

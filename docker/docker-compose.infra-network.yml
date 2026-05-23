@@ -1,0 +1,17 @@
+# Overlay: connect the API to docker-compose.infrastructure.yml network (service names postgres / redis).
+# Requires infrastructure stack to be running first.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.infrastructure.yml --env-file docker/.env.infrastructure up -d
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.infra-network.yml --env-file docker/.env up -d
+
+services:
+  api:
+    networks:
+      - idpplatform-app
+      - idpplatform-infra
+
+networks:
+  idpplatform-infra:
+    external: true
+    name: idpplatform-infra

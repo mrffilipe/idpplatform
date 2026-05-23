@@ -99,6 +99,18 @@ In local development the `Bootstrap` section in `appsettings.Development.json` i
 
 > After bootstrap, remove `Bootstrap__*` from the production environment. They are only needed on the first run.
 
+### Docker container image
+
+The API ships as a multi-stage image defined in [`Dockerfile`](./Dockerfile) (build context: repository root). See [../docker/README.md](../docker/README.md) for compose files, build/push, and operations.
+
+| Topic | Detail |
+|-------|--------|
+| Listen port | `8080` inside the container (`ASPNETCORE_URLS=http://+:8080`); map to host port `5000` in compose by default |
+| Migrations | EF Core migrations bundle runs when `Database__ApplyMigrationsOnStartup=true` (entrypoint) |
+| JWT key | Prefer `Jwt__SigningKeyPem` or mount `keys/oidc-signing.pem` with `Jwt__SigningKeyPath` |
+| Data Protection | Mount volume at `/app/keys/data-protection`; set `SecretProtection__KeyDirectoryPath=keys/data-protection` |
+| Health | Orchestrators can probe `GET /v1.0/platform/status` on port `8080` |
+
 ### RSA key for OIDC
 
 JWTs are signed with RSA (RS256). Generate the key before starting.
@@ -134,6 +146,16 @@ Identity provider configuration JSON (`IdentityProvider.ConfigJson`) frequently 
 - The keyring is persisted under `SecretProtection:KeyDirectoryPath` (default `keys/data-protection`). **Lose those keys and previously stored secrets become unreadable** — back them up alongside the database.
 
 `IdentityProviderDto` deliberately omits `ConfigJson`; secrets are never returned to API consumers.
+
+---
+
+## Build the Docker image
+
+From the repository root:
+
+```bash
+docker build -f backend/Dockerfile -t <dockerhub-username>/idpplatform-api:<tag> .
+```
 
 ---
 

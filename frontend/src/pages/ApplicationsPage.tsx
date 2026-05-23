@@ -103,7 +103,7 @@ export function ApplicationsPage() {
             <TableRow key={item.id} hover>
               <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{item.id}</TableCell>
               <TableCell>
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   {item.name}
                   {item.isSystem ? (
                     <Chip label="Sistema" size="small" color="default" variant="outlined" />

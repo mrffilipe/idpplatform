@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/.cursor
+**/node_modules/
+**/dist/
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+backend/**/keys/*.pem
+backend/**/keys/data-protection/
+**/.env
+**/.env.*
+!**/.env.example
+**/TestResults/
+samples/
+agent-transcripts/

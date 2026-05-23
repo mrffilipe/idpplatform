@@ -299,7 +299,77 @@ Steps:
 
 ---
 
-## 7. Production configuration
+## 7. Running with Docker
+
+Use this path when you want to run **pre-built container images** instead of compiling from source. PostgreSQL and Redis are started separately (optional infrastructure compose or managed services).
+
+**Full guide:** [docker/README.md](./docker/README.md) (build, push to Docker Hub, environment variables, volumes).
+
+### Prerequisites
+
+| Tool | Purpose |
+|------|---------|
+| Docker Engine + Docker Compose v2 | Run containers |
+| Published images on Docker Hub | Set `DOCKERHUB_USERNAME` and `IMAGE_TAG` in `docker/.env` |
+
+You do **not** need the .NET SDK or Node.js on the host to run the application stack (only to **build** images or generate the OIDC key).
+
+### Overview
+
+1. Start PostgreSQL and Redis — [docker/docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) or your own hosts.
+2. Generate `oidc-signing.pem` (see step 3.2) and configure JWT in `docker/.env`.
+3. Copy `docker/.env.app.example` → `docker/.env` and fill in connection strings and bootstrap credentials.
+4. `docker compose -f docker/docker-compose.yml --env-file docker/.env up -d` (add `-f docker/docker-compose.infra-network.yml` when using the infrastructure compose on the shared network).
+5. Open `http://localhost:3000`, complete bootstrap, then remove `Bootstrap__*` from `.env` and restart the API.
+
+### Environment variables (Docker)
+
+Application variables live in `docker/.env` (see [docker/.env.app.example](./docker/.env.app.example)). ASP.NET Core uses the `Section__Property` form.
+
+| Variable | Notes |
+|----------|-------|
+| `Database__ConnectionString` | Use `Host=postgres` on the infra network, or `Host=host.docker.internal` when DB listens on the host |
+| `Redis__ConnectionString` | Same pattern; recommended in production |
+| `Jwt__Issuer` | Must match the URL users use for the API (e.g. `http://localhost:5000` with default port mapping) |
+| `Jwt__SigningKeyPem` or `Jwt__SigningKeyPath` | Required; mount a volume or inline PEM |
+| `SecretProtection__KeyDirectoryPath` | Persisted via Docker volume `api-dataprotection` |
+| `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` | First deploy only |
+| `Database__ApplyMigrationsOnStartup` | `true` applies EF migrations on container start (default in the example file) |
+
+The **frontend image** is built with `VITE_*` arguments (API URL, OAuth redirect). Changing public URLs requires rebuilding and republishing the frontend image — not runtime env vars in compose.
+
+Default baked-in values match local Docker port mapping:
+
+- `VITE_API_BASE_URL=http://localhost:5000`
+- `VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback`
+
+### Building and publishing images (maintainers)
+
+From the repository root:
+
+```bash
+docker build -f backend/Dockerfile -t <username>/idpplatform-api:1.0.0 .
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
+  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
+  -t <username>/idpplatform-frontend:1.0.0 .
+docker push <username>/idpplatform-api:1.0.0
+docker push <username>/idpplatform-frontend:1.0.0
+```
+
+See [docker/README.md](./docker/README.md) for Docker Hub vs GitHub Packages (ghcr.io), tagging, and production HTTPS.
+
+### Docker troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Cannot connect to database | Check `Database__ConnectionString` and whether you need the [infra-network overlay](./docker/docker-compose.infra-network.yml) |
+| API unhealthy | `docker logs idpplatform-api` — often missing JWT key |
+| OAuth redirect mismatch | Rebuild frontend with correct `VITE_OAUTH_REDIRECT_URI`; align OAuth client in admin |
+
+---
+
+## 8. Production configuration
 
 ### Critical environment variables
 
@@ -322,6 +392,8 @@ In a production `appsettings.json`, use `:` instead (e.g., `Database:ConnectionS
 
 ### Frontend production build
 
+From source:
+
 ```bash
 cd frontend
 # Configure the VITE_* variables before building (or rely on the defaults in src/config/env.ts)
@@ -329,13 +401,15 @@ npm run build
 # Serve the dist/ folder with nginx, Cloudflare Pages, etc.
 ```
 
+With Docker, pass the same `VITE_*` values as **build-args** when building the frontend image (see [section 7](#7-running-with-docker) and [docker/README.md](./docker/README.md)).
+
 ### HTTPS
 
 In production every connection must use HTTPS. `Jwt:Issuer` must use `https://` for OIDC to work correctly.
 
 ---
 
-## 8. Command quick reference
+## 9. Command quick reference
 
 ```bash
 # Backend: apply migrations
@@ -363,7 +437,7 @@ curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Issue | Likely cause | Solution |
 |-------|--------------|----------|
@@ -375,3 +449,5 @@ curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 | Invites do not arrive by email | AWS SES is not configured | Configure `Email:*` with valid SES credentials |
 | CORS error | Frontend on a different URL | Verify `VITE_API_BASE_URL` and the API's CORS settings |
 | Cannot decrypt an existing IdP configuration | Data Protection key ring lost | Restore the `SecretProtection:KeyDirectoryPath` from backup, or recreate the IdP entry |
+| Docker: network `idpplatform-infra` not found | Infra overlay without infrastructure compose | Start [docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) or remove the infra-network overlay |
+| Docker: OAuth redirect error after login | Frontend image built with wrong `VITE_OAUTH_REDIRECT_URI` | Rebuild and push the frontend image; verify the OAuth client redirect URI |

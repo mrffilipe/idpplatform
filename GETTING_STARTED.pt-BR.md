@@ -298,7 +298,77 @@ Passos:
 
 ---
 
-## 7. Configuração para produção
+## 7. Executando com Docker
+
+Use este caminho para rodar **imagens de container publicadas** em vez de compilar o código. PostgreSQL e Redis são iniciados à parte (compose de infraestrutura opcional ou serviços gerenciados).
+
+**Guia completo:** [docker/README.pt-BR.md](./docker/README.pt-BR.md) (build, push no Docker Hub, variáveis, volumes).
+
+### Pré-requisitos
+
+| Ferramenta | Finalidade |
+|------------|------------|
+| Docker Engine + Docker Compose v2 | Executar containers |
+| Imagens publicadas no Docker Hub | Definir `DOCKERHUB_USERNAME` e `IMAGE_TAG` em `docker/.env` |
+
+Não é necessário .NET SDK nem Node.js no host para **rodar** a aplicação (apenas para **gerar** imagens ou a chave OIDC).
+
+### Visão geral
+
+1. Subir PostgreSQL e Redis — [docker/docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) ou hosts próprios.
+2. Gerar `oidc-signing.pem` (passo 3.2) e configurar JWT em `docker/.env`.
+3. Copiar `docker/.env.app.example` → `docker/.env` e preencher connection strings e bootstrap.
+4. `docker compose -f docker/docker-compose.yml --env-file docker/.env up -d` (adicione `-f docker/docker-compose.infra-network.yml` se a infra usar a rede compartilhada).
+5. Abrir `http://localhost:3000`, fazer bootstrap, remover `Bootstrap__*` do `.env` e reiniciar a API.
+
+### Variáveis de ambiente (Docker)
+
+As variáveis ficam em `docker/.env` (modelo: [docker/.env.app.example](./docker/.env.app.example)). ASP.NET Core usa o formato `Section__Property`.
+
+| Variável | Notas |
+|----------|-------|
+| `Database__ConnectionString` | `Host=postgres` na rede da infra, ou `Host=host.docker.internal` com DB no host |
+| `Redis__ConnectionString` | Mesmo padrão; recomendado em produção |
+| `Jwt__Issuer` | URL pública da API (ex.: `http://localhost:5000`) |
+| `Jwt__SigningKeyPem` ou `Jwt__SigningKeyPath` | Obrigatório |
+| `SecretProtection__KeyDirectoryPath` | Volume Docker `api-dataprotection` |
+| `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` | Só no primeiro deploy |
+| `Database__ApplyMigrationsOnStartup` | `true` aplica migrations na subida do container |
+
+A **imagem do frontend** é compilada com `VITE_*` (URL da API, redirect OAuth). Mudar URLs públicas exige rebuild e novo push — não são variáveis de runtime no compose.
+
+Valores padrão da imagem (portas locais do compose):
+
+- `VITE_API_BASE_URL=http://localhost:5000`
+- `VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback`
+
+### Gerar e publicar imagens (mantenedores)
+
+Na raiz do repositório:
+
+```bash
+docker build -f backend/Dockerfile -t <usuario>/idpplatform-api:1.0.0 .
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
+  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
+  -t <usuario>/idpplatform-frontend:1.0.0 .
+docker push <usuario>/idpplatform-api:1.0.0
+docker push <usuario>/idpplatform-frontend:1.0.0
+```
+
+Detalhes de Docker Hub vs GHCR em [docker/README.pt-BR.md](./docker/README.pt-BR.md).
+
+### Problemas comuns (Docker)
+
+| Problema | Solução |
+|----------|---------|
+| Não conecta ao banco | Verificar `Database__ConnectionString` e o overlay [infra-network](./docker/docker-compose.infra-network.yml) |
+| API unhealthy | `docker logs idpplatform-api` — frequentemente falta chave JWT |
+| Redirect OAuth incorreto | Rebuild do frontend com `VITE_OAUTH_REDIRECT_URI` correto |
+
+---
+
+## 8. Configuração para produção
 
 ### Variáveis de ambiente críticas
 
@@ -321,6 +391,8 @@ No `appsettings.json` de produção, o equivalente usa `:` (ex.: `Database:Conne
 
 ### Build do frontend para produção
 
+A partir do código-fonte:
+
 ```bash
 cd frontend
 # Configure as variáveis VITE_* antes do build (ou confie nos defaults em src/config/env.ts)
@@ -328,13 +400,15 @@ npm run build
 # Servir a pasta dist/ com nginx, Cloudflare Pages, etc.
 ```
 
+Com Docker, use os mesmos `VITE_*` como **build-args** na imagem do frontend (veja [seção 7](#7-executando-com-docker) e [docker/README.pt-BR.md](./docker/README.pt-BR.md)).
+
 ### HTTPS
 
 Em produção, toda comunicação deve ser via HTTPS. O `Jwt:Issuer` deve usar `https://` para que o OIDC funcione corretamente.
 
 ---
 
-## 8. Referência rápida de comandos
+## 9. Referência rápida de comandos
 
 ```bash
 # Backend: aplicar migrations
@@ -362,7 +436,7 @@ curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 
 ---
 
-## 9. Solução de problemas
+## 10. Solução de problemas
 
 | Problema | Causa provável | Solução |
 |----------|---------------|---------|
@@ -374,3 +448,5 @@ curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 | Convites não chegam por email | AWS SES não configurado | Configurar `Email:*` com credenciais SES válidas |
 | Erro de CORS | Frontend em URL diferente | Verificar `VITE_API_BASE_URL` e CORS da API |
 | Não decripta IdP existente | Keyring do Data Protection perdido | Restaurar `SecretProtection:KeyDirectoryPath` do backup ou recriar o IdP |
+| Docker: rede `idpplatform-infra` não encontrada | Overlay sem compose de infra | Subir [docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) ou remover o overlay |
+| Docker: erro de redirect OAuth | Imagem frontend com `VITE_OAUTH_REDIRECT_URI` errado | Rebuild e push da imagem; conferir client OAuth no admin |

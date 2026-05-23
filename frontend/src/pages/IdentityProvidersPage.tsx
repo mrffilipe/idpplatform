@@ -387,7 +387,7 @@ export function IdentityProvidersPage() {
                 />
               </TableCell>
               <TableCell align="right">
-                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                   <Button size="small" onClick={() => openEditDialog(item)}>
                     Edit
                   </Button>

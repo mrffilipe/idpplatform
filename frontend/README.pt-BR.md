@@ -48,6 +48,19 @@ cp .env.example .env
 
 Os defaults são mantidos em sincronia com as constantes do backend (`PlatformDefaults.AdminConsole.ClientId` e `DefaultRedirectUris`) e o `appsettings.Development.json` — mude todos juntos.
 
+### Imagem Docker
+
+O painel admin é servido por nginx em imagem estática ([`Dockerfile`](./Dockerfile); contexto: raiz do repositório). Os `VITE_*` são definidos no **build** via `--build-arg`. Mudar URL da API ou redirect OAuth exige rebuild e novo push.
+
+```bash
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
+  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
+  -t <usuario-dockerhub>/idpplatform-frontend:<tag> .
+```
+
+Veja [../docker/README.pt-BR.md](../docker/README.pt-BR.md).
+
 ---
 
 ## Como rodar

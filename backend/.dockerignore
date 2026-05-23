@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/keys/*.pem
+**/keys/data-protection/
+**/.env
+**/.env.*
+!**/.env.example
+**/TestResults/
+tools/

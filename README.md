@@ -12,6 +12,8 @@ Inspired by Keycloak-style platforms: a managed, multi-tenant IdP with its own a
 
 See **[GETTING_STARTED.md](./GETTING_STARTED.md)** for a full walkthrough to configure and run the system from scratch.
 
+To run from **published Docker images** (without building from source), see **[docker/README.md](./docker/README.md)** and [GETTING_STARTED.md § Running with Docker](./GETTING_STARTED.md#7-running-with-docker).
+
 ---
 
 ## Repository layout
@@ -22,6 +24,7 @@ backend/    ASP.NET Core 8 API — Clean Architecture (Domain / Application / In
 frontend/   Admin SPA — React 19 + MUI + React Router 7 + Vite
 samples/    Reference consumer applications (e.g., pulse-crm — SaaS CRM + OIDC)
 rules/      Standards and conventions: backend-rules.md, frontend-rules.md
+docker/     Docker Compose, image build/push guides, env templates
 .github/    CI workflows (when configured)
 ```
 
@@ -32,6 +35,7 @@ rules/      Standards and conventions: backend-rules.md, frontend-rules.md
 | Document | Content |
 |----------|---------|
 | [GETTING_STARTED.md](./GETTING_STARTED.md) | Step-by-step guide: configure, run, and bootstrap from scratch |
+| [docker/README.md](./docker/README.md) | Docker images, compose files, build/push (Docker Hub / GHCR), operations |
 | [rules/backend-rules.md](./rules/backend-rules.md) | Backend conventions, formatting, options pattern, secrets, OIDC |
 | [rules/frontend-rules.md](./rules/frontend-rules.md) | Frontend conventions, env vars with defaults, OIDC flow |
 | [backend/README.md](./backend/README.md) | Backend architecture, configuration, endpoints, migrations, OIDC |

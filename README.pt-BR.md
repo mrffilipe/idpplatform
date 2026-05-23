@@ -12,6 +12,8 @@ Inspirado no modelo Keycloak-like: um IdP gerenciado, multi-tenant, com painel a
 
 Consulte o guia completo em **[GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md)** para configurar e rodar o sistema do zero.
 
+Para rodar com **imagens Docker publicadas** (sem compilar o código), veja **[docker/README.pt-BR.md](./docker/README.pt-BR.md)** e [GETTING_STARTED.pt-BR.md § Executando com Docker](./GETTING_STARTED.pt-BR.md#7-executando-com-docker).
+
 ---
 
 ## Estrutura do repositório
@@ -22,6 +24,7 @@ backend/    API ASP.NET Core 8 — Clean Architecture (Domain / Application / In
 frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
 samples/    Aplicações consumidoras de referência (ex.: pulse-crm — CRM SaaS + OIDC)
 rules/      Padrões e convenções: backend-rules.md, frontend-rules.md
+docker/     Docker Compose, guias de build/push, modelos de .env
 .github/    Workflows de CI (quando configurados)
 ```
 
@@ -32,6 +35,7 @@ rules/      Padrões e convenções: backend-rules.md, frontend-rules.md
 | Documento | Conteúdo |
 |-----------|----------|
 | [GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md) | Guia passo a passo: configurar, rodar e fazer o bootstrap do zero |
+| [docker/README.pt-BR.md](./docker/README.pt-BR.md) | Imagens Docker, compose, build/push (Docker Hub / GHCR), operação |
 | [rules/backend-rules.md](./rules/backend-rules.md) | Convenções do backend, formatação, options pattern, segredos, OIDC |
 | [rules/frontend-rules.md](./rules/frontend-rules.md) | Convenções do frontend, variáveis com defaults, fluxo OIDC |
 | [backend/README.md](./backend/README.md) | Arquitetura, configuração, endpoints, migrations e OIDC do backend |
