@@ -63,6 +63,7 @@ COPY --from=spa-build /app/dist /usr/share/nginx/html
 
 RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
 COPY docker/nginx/app.conf /etc/nginx/conf.d/idpplatform.conf
+COPY docker/nginx/proxy_params.conf /etc/nginx/conf.d/proxy_params.conf
 
 COPY docker/scripts/entrypoint-app.sh /docker/scripts/entrypoint-app.sh
 
