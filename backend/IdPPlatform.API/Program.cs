@@ -8,6 +8,7 @@ using IdPPlatform.Domain.Constants;
 using IdPPlatform.Infrastructure.Configurations;
 using IdPPlatform.Infrastructure.Extensions;
 using IdPPlatform.Infrastructure.Persistence;
+using Microsoft.AspNetCore.HttpOverrides;
 using TenancyKit.AspNetCore;
 using TenancyKit.Core;
 
@@ -86,6 +87,15 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+        | ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 app.UseMiddleware<ApplicationExceptionMiddleware>();
@@ -97,6 +107,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 }
 
 app.UseCors("AllowAll");
+app.UseForwardedHeaders();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMultiTenancy<TenantInfoAdapter>();

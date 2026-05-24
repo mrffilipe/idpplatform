@@ -83,7 +83,7 @@ All configuration lives in `IdPPlatform.API/appsettings.json` (template) and `ap
 
 Every Options class is bound and validated at startup (`IValidateOptions<T>` + `ValidateOnStart()`). Misconfigured production deployments fail fast.
 
-### Environment variables (Docker / docker-compose / `.env`)
+### Environment variables (Docker production `.env`)
 
 ASP.NET Core maps `Section__Property` to `Section:Property` (equivalent to nested JSON). Example for bootstrap:
 
@@ -101,7 +101,7 @@ In local development the `Bootstrap` section in `appsettings.Development.json` i
 
 ### Docker container image
 
-The API ships as a multi-stage image defined in [`Dockerfile`](./Dockerfile) (build context: repository root). See [../docker/README.md](../docker/README.md) for compose files, build/push, and operations.
+The API is included in the monolith image built from [../docker/Dockerfile](../docker/Dockerfile). **Deploy:** [../GETTING_STARTED.md § Production](../GETTING_STARTED.md#7-production-deployment-docker-compose). **Build/push:** [../docs/DOCKER_PUBLISH.md](../docs/DOCKER_PUBLISH.md). The standalone [`Dockerfile`](./Dockerfile) remains for API-only local builds.
 
 | Topic | Detail |
 |-------|--------|
@@ -110,6 +110,7 @@ The API ships as a multi-stage image defined in [`Dockerfile`](./Dockerfile) (bu
 | JWT key | Prefer `Jwt__SigningKeyPem` or mount `keys/oidc-signing.pem` with `Jwt__SigningKeyPath` |
 | Data Protection | Mount volume at `/app/keys/data-protection`; set `SecretProtection__KeyDirectoryPath=keys/data-protection` |
 | Health | Orchestrators can probe `GET /v1.0/platform/status` on port `8080` |
+| HTTPS | Forwarded Headers enabled for TLS termination in the monolith nginx proxy |
 
 ### RSA key for OIDC
 

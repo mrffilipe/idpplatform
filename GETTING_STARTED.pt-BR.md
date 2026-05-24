@@ -2,7 +2,20 @@
 
 [English](./GETTING_STARTED.md) | [Português](./GETTING_STARTED.pt-BR.md)
 
-Guia completo para configurar e rodar o IdP Platform do zero em ambiente de desenvolvimento local.
+Guia para rodar o IdP Platform em **desenvolvimento** (código-fonte) ou **produção** (imagens Docker publicadas).
+
+### Escolha o caminho
+
+| Caminho | Público | Seções |
+|---------|---------|--------|
+| **Desenvolvimento** | Você clonou o repositório e roda API e SPA do código-fonte | **1–6** abaixo |
+| **Produção** | Você implanta imagens publicadas com Docker Compose (sem build deste repo) | **[§ 7 — Deploy em produção](#7-deploy-em-produção-docker-compose)** |
+
+> **Mantenedores** (build e push de imagens): veja [docs/DOCKER_PUBLISH.pt-BR.md](./docs/DOCKER_PUBLISH.pt-BR.md), não este guia.
+
+---
+
+## Desenvolvimento (seções 1–6)
 
 ---
 
@@ -22,7 +35,7 @@ Instale antes de continuar:
 Clone o repositório:
 
 ```bash
-git clone <url-do-repo>
+git clone https://github.com/mrffilipe/idpplatform.git
 cd idpplatformproject
 ```
 
@@ -298,73 +311,224 @@ Passos:
 
 ---
 
-## 7. Executando com Docker
+## 7. Deploy em produção (Docker Compose)
 
-Use este caminho para rodar **imagens de container publicadas** em vez de compilar o código. PostgreSQL e Redis são iniciados à parte (compose de infraestrutura opcional ou serviços gerenciados).
+Implante o IdP Platform com **imagens de container publicadas**. Não é necessário clonar este repositório (exceto opcionalmente para gerar a chave OIDC com `GenerateOidcKey`).
 
-**Guia completo:** [docker/README.pt-BR.md](./docker/README.pt-BR.md) (build, push no Docker Hub, variáveis, volumes).
+**PostgreSQL e Redis são obrigatórios** e não estão no exemplo de compose da aplicação abaixo.
 
 ### Pré-requisitos
 
 | Ferramenta | Finalidade |
 |------------|------------|
 | Docker Engine + Docker Compose v2 | Executar containers |
-| Imagens publicadas no Docker Hub | Definir `DOCKERHUB_USERNAME` e `IMAGE_TAG` em `docker/.env` |
+| PostgreSQL + Redis | Acessíveis pelo container do app |
+| Imagem publicada no Docker Hub | `mrffilipe/idpplatform:<tag>` via `DOCKERHUB_USERNAME` / `IMAGE_TAG` |
+| Certificados TLS | `fullchain.pem` e `privkey.pem` em `./certs/` |
 
-Não é necessário .NET SDK nem Node.js no host para **rodar** a aplicação (apenas para **gerar** imagens ou a chave OIDC).
+Não é necessário .NET SDK nem Node.js no host, salvo para gerar a chave OIDC a partir deste repo.
 
-### Visão geral
+### Uma URL pública (como funciona o roteamento)
 
-1. Subir PostgreSQL e Redis — [docker/docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) ou hosts próprios.
-2. Gerar `oidc-signing.pem` (passo 3.2) e configurar JWT em `docker/.env`.
-3. Copiar `docker/.env.app.example` → `docker/.env` e preencher connection strings e bootstrap.
-4. `docker compose -f docker/docker-compose.yml --env-file docker/.env up -d` (adicione `-f docker/docker-compose.infra-network.yml` se a infra usar a rede compartilhada).
-5. Abrir `http://localhost:3000`, fazer bootstrap, remover `Bootstrap__*` do `.env` e reiniciar a API.
+Com `Jwt__Issuer=https://auth.meudominio.com.br` (e TLS nesse host), usuários e o SPA usam a **mesma origem**:
 
-### Variáveis de ambiente (Docker)
+| O que você abre ou chama | URL | Atendido por |
+|--------------------------|-----|--------------|
+| Painel admin (SPA) | `https://auth.meudominio.com.br/` | nginx → arquivos estáticos |
+| API (JSON, OIDC, login) | `https://auth.meudominio.com.br/v1.0/...`, `/connect/...`, `/account/...`, `/.well-known/...` | nginx → Kestrel (`127.0.0.1:8080`) |
+| Callback OAuth após login | `https://auth.meudominio.com.br/auth/callback` | nginx → SPA (rota React `/auth/callback`) |
 
-As variáveis ficam em `docker/.env` (modelo: [docker/.env.app.example](./docker/.env.app.example)). ASP.NET Core usa o formato `Section__Property`.
+Defina **`Jwt__Issuer`** exatamente como a URL que o navegador usa (esquema + host, sem barra no final). O SPA usa esse mesmo host para API e redirect OAuth automaticamente.
 
-| Variável | Notas |
-|----------|-------|
-| `Database__ConnectionString` | `Host=postgres` na rede da infra, ou `Host=host.docker.internal` com DB no host |
-| `Redis__ConnectionString` | Mesmo padrão; recomendado em produção |
-| `Jwt__Issuer` | URL pública da API (ex.: `http://localhost:5000`) |
-| `Jwt__SigningKeyPem` ou `Jwt__SigningKeyPath` | Obrigatório |
-| `SecretProtection__KeyDirectoryPath` | Volume Docker `api-dataprotection` |
-| `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` | Só no primeiro deploy |
-| `Database__ApplyMigrationsOnStartup` | `true` aplica migrations na subida do container |
+### Diretório de deploy sugerido
 
-A **imagem do frontend** é compilada com `VITE_*` (URL da API, redirect OAuth). Mudar URLs públicas exige rebuild e novo push — não são variáveis de runtime no compose.
+Crie uma pasta fora deste repositório (ex.: `idpplatform-deploy/`) com:
 
-Valores padrão da imagem (portas locais do compose):
-
-- `VITE_API_BASE_URL=http://localhost:5000`
-- `VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback`
-
-### Gerar e publicar imagens (mantenedores)
-
-Na raiz do repositório:
-
-```bash
-docker build -f backend/Dockerfile -t <usuario>/idpplatform-api:1.0.0 .
-docker build -f frontend/Dockerfile \
-  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
-  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
-  -t <usuario>/idpplatform-frontend:1.0.0 .
-docker push <usuario>/idpplatform-api:1.0.0
-docker push <usuario>/idpplatform-frontend:1.0.0
+```
+idpplatform-deploy/
+  docker-compose.yml
+  .env
+  certs/fullchain.pem
+  certs/privkey.pem
+  keys/oidc-signing.pem    # opcional com Jwt__SigningKeyPath
 ```
 
-Detalhes de Docker Hub vs GHCR em [docker/README.pt-BR.md](./docker/README.pt-BR.md).
+### PostgreSQL e Redis (infra)
 
-### Problemas comuns (Docker)
+Salve como `docker-compose.infra.yml` na pasta de deploy (ou use serviços gerenciados).
+
+```yaml
+# PostgreSQL + Redis locais sugeridos (não versionados no IdP Platform)
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-idpplatform_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-idpplatform_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-default_password}
+      --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:
+```
+
+Exemplo de `.env` para o snippet (mesmo diretório do arquivo acima):
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgrespassword
+POSTGRES_DB=idpplatform_db
+POSTGRES_PORT=5432
+REDIS_PASSWORD=default_password
+REDIS_PORT=6379
+```
+
+Subir a infra:
+
+```bash
+docker compose -f docker-compose.infra.local.yml --env-file .env.infra up -d
+```
+
+| Variável de infra | Padrão sugerido | Uso |
+|-------------------|-----------------|-----|
+| `POSTGRES_USER` | `postgres` | Usuário do banco |
+| `POSTGRES_PASSWORD` | (definir senha forte) | Senha do banco |
+| `POSTGRES_DB` | `idpplatform_db` | Nome do banco |
+| `POSTGRES_PORT` | `5432` | Porta no host |
+| `REDIS_PASSWORD` | (definir senha forte) | Senha do Redis |
+| `REDIS_PORT` | `6379` | Porta no host |
+
+Alinhe `Database__ConnectionString` e `Redis__ConnectionString` no `.env` com esses valores (o exemplo abaixo usa `host.docker.internal` quando a infra publica portas no host).
+
+### `docker-compose.yml` (produção)
+
+Salve como `docker-compose.yml` na pasta de deploy:
+
+```yaml
+# IdP Platform — imagem monólito (API + SPA admin + proxy HTTPS)
+# Exige PostgreSQL e Redis acessíveis pelo container.
+
+services:
+  app:
+    image: ${DOCKERHUB_USERNAME}/idpplatform:${IMAGE_TAG:-latest}
+    container_name: idpplatform-app
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_HTTPS_PORT:-443}:443"
+    volumes:
+      - app-dataprotection:/app/keys/data-protection
+      - ./certs:/etc/nginx/certs:ro
+      # Descomente para montar chave JWT (Jwt__SigningKeyPath=keys/oidc-signing.pem):
+      # - ./keys/oidc-signing.pem:/app/keys/oidc-signing.pem:ro
+
+volumes:
+  app-dataprotection:
+```
+
+### `.env` (aplicação)
+
+Salve como `.env` ao lado de `docker-compose.yml`:
+
+```env
+DOCKERHUB_USERNAME=mrffilipe
+IMAGE_TAG=1.0.0
+
+PROXY_HTTP_PORT=80
+PROXY_HTTPS_PORT=443
+
+Database__ConnectionString=Host=host.docker.internal;Port=5432;Database=idpplatform_db;Username=postgres;Password=postgrespassword
+Database__ApplyMigrationsOnStartup=true
+
+Jwt__Issuer=https://auth.exemplo.com
+Jwt__Audience=idpplatform-api
+Jwt__KeyId=default
+Jwt__RefreshTokenDays=30
+Jwt__SigningKeyPath=keys/oidc-signing.pem
+
+Redis__ConnectionString=host.docker.internal:6379,password=default_password,ssl=false
+Redis__InstanceName=idpplatform:
+Redis__TenantIdentifierCacheMinutes=5
+
+SecretProtection__KeyDirectoryPath=keys/data-protection
+SecretProtection__ApplicationName=IdPPlatform
+
+Bootstrap__AdminEmail=admin@example.com
+Bootstrap__AdminPassword=ChangeMe_Strong_Password_12
+Bootstrap__AdminDisplayName=Platform Admin
+
+Email__FromAddress=noreply@example.com
+Email__Region=us-east-1
+Email__AccessKeyId=
+Email__SecretAccessKey=
+Email__SessionToken=
+```
+
+ASP.NET Core usa `Section__Property`. Em produção **não** defina `VITE_*` no `.env` — a imagem monólito usa **mesma origem** (same-origin).
+
+| Variável | Rebuild da imagem? | Notas |
+|----------|-------------------|-------|
+| `Database__*`, `Redis__*`, `Jwt__*`, `Bootstrap__*`, `Email__*` | Não | Edite `.env`, depois `docker compose restart app` |
+| `Jwt__Issuer` | Não | Deve coincidir com a URL pública (`https://auth.meudominio.com.br`) |
+| Código da plataforma | Sim | Nova tag `idpplatform` |
+
+Para **desenvolvimento local** (seções 1–6), `VITE_*` em `frontend/.env` continuam válidos com `npm run dev` na porta 3000 e API na 5000.
+
+### Passos de deploy
+
+1. Subir PostgreSQL e Redis (snippet de infra ou gerenciados).
+2. Gerar `oidc-signing.pem` (passo 3.2 em desenvolvimento, ou em máquina confiável com este repo).
+3. Criar os arquivos da pasta de deploy; colocar certificados em `certs/`.
+4. Definir `Jwt__Issuer` com a URL pública `https://` (mesmo host que o usuário abre no navegador).
+5. Subir o app:
+
+```bash
+cd idpplatform-deploy
+docker compose --env-file .env up -d
+```
+
+6. Abrir `https://seu-host-publico`, fazer bootstrap, remover `Bootstrap__*` do `.env` e reiniciar:
+
+```bash
+docker compose --env-file .env restart app
+```
+
+### Problemas comuns (produção)
 
 | Problema | Solução |
 |----------|---------|
-| Não conecta ao banco | Verificar `Database__ConnectionString` e o overlay [infra-network](./docker/docker-compose.infra-network.yml) |
-| API unhealthy | `docker logs idpplatform-api` — frequentemente falta chave JWT |
-| Redirect OAuth incorreto | Rebuild do frontend com `VITE_OAUTH_REDIRECT_URI` correto |
+| Não conecta ao banco | Verificar PostgreSQL e `Database__ConnectionString` |
+| Container unhealthy ou cai | `docker logs idpplatform-app` — chave JWT ou certificados |
+| Redirect OAuth incorreto | `Jwt__Issuer` diferente da URL do navegador | Defina `Jwt__Issuer` = URL pública; reinicie o app (o redirect `https://<host>/auth/callback` é registrado no bootstrap e atualizado em `GET /platform/status`) |
+| HTTPS não sobe | `fullchain.pem` / `privkey.pem` válidos em `./certs/` |
+| SPA chama API errada | `Jwt__Issuer` incorreto | Igualar `Jwt__Issuer` à URL da barra do navegador e `docker compose restart app` |
 
 ---
 
@@ -384,23 +548,11 @@ Detalhes de Docker Hub vs GHCR em [docker/README.pt-BR.md](./docker/README.pt-BR
 | `Redis__ConnectionString` | Cache distribuído (ElastiCache, Redis Cloud, etc.) |
 | `SecretProtection__KeyDirectoryPath` | Diretório persistente para o keyring do data protection (precisa sobreviver a restarts e ser backup) |
 | `SecretProtection__ApplicationName` | Nome lógico para isolar o keyring (default `IdPPlatform`) |
-| `VITE_API_BASE_URL` | URL pública da API (durante o build do frontend) |
-| `VITE_OAUTH_REDIRECT_URI` | URL pública do callback OIDC do frontend |
-
 No `appsettings.json` de produção, o equivalente usa `:` (ex.: `Database:ConnectionString`).
 
-### Build do frontend para produção
+### Frontend em produção (monólito)
 
-A partir do código-fonte:
-
-```bash
-cd frontend
-# Configure as variáveis VITE_* antes do build (ou confie nos defaults em src/config/env.ts)
-npm run build
-# Servir a pasta dist/ com nginx, Cloudflare Pages, etc.
-```
-
-Com Docker, use os mesmos `VITE_*` como **build-args** na imagem do frontend (veja [seção 7](#7-executando-com-docker) e [docker/README.pt-BR.md](./docker/README.pt-BR.md)).
+O SPA admin está na imagem `idpplatform` e usa o **mesmo host** que a API. Configure apenas `Jwt__Issuer` no `.env` (seção 7). Para deploy com hosts separados a partir do código-fonte, defina `VITE_*` antes de `npm run build` em `frontend/`.
 
 ### HTTPS
 
@@ -448,5 +600,6 @@ curl -X POST http://localhost:5000/v1.0/platform/bootstrap
 | Convites não chegam por email | AWS SES não configurado | Configurar `Email:*` com credenciais SES válidas |
 | Erro de CORS | Frontend em URL diferente | Verificar `VITE_API_BASE_URL` e CORS da API |
 | Não decripta IdP existente | Keyring do Data Protection perdido | Restaurar `SecretProtection:KeyDirectoryPath` do backup ou recriar o IdP |
-| Docker: rede `idpplatform-infra` não encontrada | Overlay sem compose de infra | Subir [docker-compose.infrastructure.yml](./docker/docker-compose.infrastructure.yml) ou remover o overlay |
-| Docker: erro de redirect OAuth | Imagem frontend com `VITE_OAUTH_REDIRECT_URI` errado | Rebuild e push da imagem; conferir client OAuth no admin |
+| Docker: não conecta ao PostgreSQL/Redis | Infra parada ou strings erradas | Subir infra ou serviços gerenciados; conferir `Database__*` e `Redis__*` no `.env` de deploy |
+| Docker: erro de redirect OAuth | `Jwt__Issuer` ou redirect do client OAuth | `Jwt__Issuer` = URL pública; client `platform-admin-web` com `https://<host>/auth/callback` |
+| Docker: HTTPS / esquema OIDC incorreto | Certificados ou `Jwt__Issuer` incorretos | Montar `./certs/` válidos; `Jwt__Issuer` com `https://...` e `restart app` |

@@ -1,9 +1,15 @@
-# Build and push IdP Platform images to Docker Hub on version tags (v*).
-# Repository secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+# Maintainer workflow: build and push the IdP Platform monolith image to Docker Hub.
 #
-# Optional repository variables for the frontend image:
-#   VITE_API_BASE_URL, VITE_OAUTH_REDIRECT_URI, VITE_OAUTH_CLIENT_ID,
-#   VITE_API_VERSION, VITE_API_TIMEOUT_MS
+# Image: <DOCKERHUB_USERNAME>/idpplatform (API + admin SPA + nginx TLS proxy)
+# SPA uses same origin as nginx (empty VITE_API_BASE_URL at build); operators set Jwt__Issuer in .env.
+#
+# Triggers:
+#   - Push of a version tag matching v* (e.g. v1.0.0)
+#   - Manual run (workflow_dispatch)
+#
+# Required repository secrets:
+#   DOCKERHUB_USERNAME — Docker Hub user or organization
+#   DOCKERHUB_TOKEN    — access token with push permission
 
 name: Docker publish
 
@@ -14,72 +20,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-api:
+  # Builds and pushes the all-in-one idpplatform image (see docker/Dockerfile).
+  build-app:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - id: meta
+      # Semver tags from git tag v1.2.3 → 1.2.3, 1.2, 1, latest
+      - name: Generate image tags and labels
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/idpplatform-api
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/idpplatform
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push monolith image
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: backend/Dockerfile
+          file: docker/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/idpplatform-frontend
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || 'http://localhost:5000' }}
-            VITE_OAUTH_REDIRECT_URI=${{ vars.VITE_OAUTH_REDIRECT_URI || 'http://localhost:3000/auth/callback' }}
-            VITE_OAUTH_CLIENT_ID=${{ vars.VITE_OAUTH_CLIENT_ID || 'platform-admin-web' }}
-            VITE_API_VERSION=${{ vars.VITE_API_VERSION || '1.0' }}
-            VITE_API_TIMEOUT_MS=${{ vars.VITE_API_TIMEOUT_MS || '30000' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

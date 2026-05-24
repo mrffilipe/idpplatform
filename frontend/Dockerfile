@@ -4,6 +4,7 @@
 #     --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
 #     -t <username>/idpplatform-frontend:<tag> .
 
+# SPA build (monolith image leaves API/redirect URL empty — same origin as nginx at runtime)
 FROM node:22-alpine AS build
 WORKDIR /app
 
@@ -25,6 +26,7 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
+# Serve static SPA via nginx
 FROM nginx:alpine AS runtime
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

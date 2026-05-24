@@ -83,7 +83,7 @@ Todas as configurações ficam em `IdPPlatform.API/appsettings.json` (template) 
 
 Toda Options class tem bind + validação em startup (`IValidateOptions<T>` + `ValidateOnStart()`). Configurações inválidas em produção falham logo na inicialização.
 
-### Variáveis de ambiente (Docker / docker-compose / `.env`)
+### Variáveis de ambiente (`.env` de produção Docker)
 
 O ASP.NET Core mapeia `Secao__Propriedade` para `Secao:Propriedade` (equivalente ao JSON aninhado). Exemplo para bootstrap:
 
@@ -101,7 +101,7 @@ Em desenvolvimento local, a seção `Bootstrap` no `appsettings.Development.json
 
 ### Imagem Docker da API
 
-A API é empacotada em imagem multi-stage em [`Dockerfile`](./Dockerfile) (contexto de build: raiz do repositório). Veja [../docker/README.pt-BR.md](../docker/README.pt-BR.md) para compose, build/push e operação.
+A API faz parte da imagem monólito em [../docker/Dockerfile](../docker/Dockerfile). **Deploy:** [../GETTING_STARTED.pt-BR.md § Produção](../GETTING_STARTED.pt-BR.md#7-deploy-em-produção-docker-compose). **Build/push:** [../docs/DOCKER_PUBLISH.pt-BR.md](../docs/DOCKER_PUBLISH.pt-BR.md). O [`Dockerfile`](./Dockerfile) isolado permanece para build local só da API.
 
 | Tópico | Detalhe |
 |--------|---------|
@@ -110,6 +110,7 @@ A API é empacotada em imagem multi-stage em [`Dockerfile`](./Dockerfile) (conte
 | Chave JWT | `Jwt__SigningKeyPem` ou volume com `Jwt__SigningKeyPath` |
 | Data Protection | Volume em `/app/keys/data-protection` |
 | Health | `GET /v1.0/platform/status` na porta `8080` |
+| HTTPS | Forwarded Headers para TLS no proxy nginx do monólito |
 
 ### Chave RSA para OIDC
 

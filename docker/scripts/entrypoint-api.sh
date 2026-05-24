@@ -1,4 +1,5 @@
 #!/bin/sh
+# Apply EF migrations when enabled, then start Kestrel.
 set -eu
 
 if [ "${Database__ApplyMigrationsOnStartup:-true}" = "true" ]; then

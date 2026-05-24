@@ -1,6 +1,7 @@
 # Build from repository root:
 #   docker build -f backend/Dockerfile -t <username>/idpplatform-api:<tag> .
 
+# Restore and publish the API
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
@@ -16,6 +17,7 @@ COPY backend/ .
 WORKDIR /src
 RUN dotnet publish IdPPlatform.API/IdPPlatform.API.csproj -c Release -o /app/publish
 
+# Bundle EF migrations for container startup
 RUN dotnet tool install --global dotnet-ef --version 8.0.26
 ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet ef migrations bundle \
@@ -25,6 +27,7 @@ RUN dotnet ef migrations bundle \
     --self-contained \
     --target-runtime linux-x64
 
+# Runtime: non-root user, curl for healthcheck, entrypoint applies migrations
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 

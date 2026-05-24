@@ -33,6 +33,7 @@ public sealed class PlatformService : IPlatformService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ApplicationDbContext _context;
     private readonly BootstrapOptions _bootstrapOptions;
+    private readonly JwtOptions _jwtOptions;
 
     public PlatformService(
         IPlatformConfigurationRepository platformConfigurations,
@@ -45,7 +46,8 @@ public sealed class PlatformService : IPlatformService
         IApplicationClientRepository clients,
         IUnitOfWork unitOfWork,
         ApplicationDbContext context,
-        IOptions<BootstrapOptions> bootstrapOptions)
+        IOptions<BootstrapOptions> bootstrapOptions,
+        IOptions<JwtOptions> jwtOptions)
     {
         _platformConfigurations = platformConfigurations;
         _users = users;
@@ -58,6 +60,7 @@ public sealed class PlatformService : IPlatformService
         _unitOfWork = unitOfWork;
         _context = context;
         _bootstrapOptions = bootstrapOptions.Value;
+        _jwtOptions = jwtOptions.Value;
     }
 
     public async Task<BootstrapResult> BootstrapAsync(
@@ -163,7 +166,7 @@ public sealed class PlatformService : IPlatformService
                 PlatformDefaults.AdminConsole.ClientId,
                 clientSecretHash: null,
                 ClientType.Public,
-                JsonSerializer.Serialize(PlatformDefaults.AdminConsole.DefaultRedirectUris),
+                JsonSerializer.Serialize(BuildAdminConsoleRedirectUris()),
                 JsonSerializer.Serialize(PlatformDefaults.AdminConsole.AllowedScopes),
                 accessTokenTtlSeconds: 900,
                 isSystem: true);
@@ -202,6 +205,7 @@ public sealed class PlatformService : IPlatformService
         if (isConfigured)
         {
             await EnsureAdminConsoleOfflineAccessScopeAsync(cancellationToken);
+            await EnsureAdminConsoleRedirectUriAsync(cancellationToken);
         }
 
         return new PlatformStatusResult
@@ -210,6 +214,56 @@ public sealed class PlatformService : IPlatformService
             RequiresBootstrap = !isConfigured,
             OauthClientId = isConfigured ? configuration?.OauthClientId : null
         };
+    }
+
+    private IReadOnlyList<string> BuildAdminConsoleRedirectUris()
+    {
+        var uris = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var uri in PlatformDefaults.AdminConsole.DefaultRedirectUris)
+        {
+            uris.Add(uri);
+        }
+
+        var issuer = _jwtOptions.Issuer.Trim().TrimEnd('/');
+        if (!string.IsNullOrEmpty(issuer))
+        {
+            uris.Add($"{issuer}/auth/callback");
+        }
+
+        return uris.ToList();
+    }
+
+    /// <summary>
+    /// Ensures the admin SPA redirect for the configured JWT issuer (monolith / same-origin deploy).
+    /// </summary>
+    private async Task EnsureAdminConsoleRedirectUriAsync(CancellationToken cancellationToken)
+    {
+        var client = await _clients.GetByClientIdAsync(PlatformDefaults.AdminConsole.ClientId, cancellationToken);
+        if (client is null || !client.IsSystem)
+        {
+            return;
+        }
+
+        var expected = BuildAdminConsoleRedirectUris();
+        var current = JsonSerializer.Deserialize<List<string>>(client.RedirectUris) ?? [];
+        if (expected.All(uri => current.Contains(uri, StringComparer.Ordinal)))
+        {
+            return;
+        }
+
+        var merged = new HashSet<string>(current, StringComparer.Ordinal);
+        foreach (var uri in expected)
+        {
+            merged.Add(uri);
+        }
+
+        var updated = JsonSerializer.Serialize(merged.ToList());
+
+        await _context.ApplicationClients
+            .Where(c => c.Id == client.Id)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(c => c.RedirectUris, updated),
+                cancellationToken);
     }
 
     /// <summary>

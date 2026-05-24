@@ -50,16 +50,11 @@ Defaults are kept in sync with the backend constants (`PlatformDefaults.AdminCon
 
 ### Docker image
 
-The admin SPA is built into a static nginx image ([`Dockerfile`](./Dockerfile); context: repository root). All `VITE_*` values are **fixed at image build time** via `--build-arg`. Changing the public API URL or OAuth redirect requires rebuilding and republishing the image.
+In production, the SPA ships inside the monolith image ([`../docker/Dockerfile`](../docker/Dockerfile)). The image is built with empty `VITE_API_BASE_URL` and `VITE_OAUTH_REDIRECT_URI`; in the browser the app uses `window.location.origin` and `{origin}/auth/callback`. Set `Jwt__Issuer` in the deploy `.env` to your public URL (see [GETTING_STARTED.md §7](../GETTING_STARTED.md#7-production-deployment-docker-compose)).
 
-```bash
-docker build -f frontend/Dockerfile \
-  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
-  --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
-  -t <dockerhub-username>/idpplatform-frontend:<tag> .
-```
+The standalone [`Dockerfile`](./Dockerfile) is for SPA-only local experiments.
 
-See [../docker/README.md](../docker/README.md) for compose, push to Docker Hub, and consumer setup.
+**Production deploy:** [../GETTING_STARTED.md § Production](../GETTING_STARTED.md#7-production-deployment-docker-compose). **Build/push:** [../docs/DOCKER_PUBLISH.md](../docs/DOCKER_PUBLISH.md).
 
 ---
 

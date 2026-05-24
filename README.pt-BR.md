@@ -10,9 +10,11 @@ Inspirado no modelo Keycloak-like: um IdP gerenciado, multi-tenant, com painel a
 
 ## Primeiros passos
 
-Consulte o guia completo em **[GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md)** para configurar e rodar o sistema do zero.
-
-Para rodar com **imagens Docker publicadas** (sem compilar o código), veja **[docker/README.pt-BR.md](./docker/README.pt-BR.md)** e [GETTING_STARTED.pt-BR.md § Executando com Docker](./GETTING_STARTED.pt-BR.md#7-executando-com-docker).
+| Caminho | Uso |
+|---------|-----|
+| **Desenvolvimento** | Clone o repo e siga [GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md) seções **1–6** (código-fonte, PostgreSQL/Redis local) |
+| **Produção** | Imagem monólito `idpplatform` — [GETTING_STARTED.pt-BR.md § Produção](./GETTING_STARTED.pt-BR.md#7-deploy-em-produção-docker-compose) (um serviço, `.env` unificado) |
+| **Mantenedores** | Build e push de imagens — [docs/DOCKER_PUBLISH.pt-BR.md](./docs/DOCKER_PUBLISH.pt-BR.md) |
 
 ---
 
@@ -24,8 +26,9 @@ backend/    API ASP.NET Core 8 — Clean Architecture (Domain / Application / In
 frontend/   Painel admin SPA — React 19 + MUI + React Router 7 + Vite
 samples/    Aplicações consumidoras de referência (ex.: pulse-crm — CRM SaaS + OIDC)
 rules/      Padrões e convenções: backend-rules.md, frontend-rules.md
-docker/     Docker Compose, guias de build/push, modelos de .env
-.github/    Workflows de CI (quando configurados)
+docker/     Artefatos de build de imagens (nginx, entrypoint da API)
+docs/       Guias para mantenedores (ex.: publicação Docker)
+.github/    CI (publicação Docker em tags de versão)
 ```
 
 ---
@@ -34,8 +37,8 @@ docker/     Docker Compose, guias de build/push, modelos de .env
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md) | Guia passo a passo: configurar, rodar e fazer o bootstrap do zero |
-| [docker/README.pt-BR.md](./docker/README.pt-BR.md) | Imagens Docker, compose, build/push (Docker Hub / GHCR), operação |
+| [GETTING_STARTED.pt-BR.md](./GETTING_STARTED.pt-BR.md) | Desenvolvimento (§1–6) e deploy Docker em produção (§7) |
+| [docs/DOCKER_PUBLISH.pt-BR.md](./docs/DOCKER_PUBLISH.pt-BR.md) | Build/push de imagens: workflow CI e comandos manuais |
 | [rules/backend-rules.md](./rules/backend-rules.md) | Convenções do backend, formatação, options pattern, segredos, OIDC |
 | [rules/frontend-rules.md](./rules/frontend-rules.md) | Convenções do frontend, variáveis com defaults, fluxo OIDC |
 | [backend/README.md](./backend/README.md) | Arquitetura, configuração, endpoints, migrations e OIDC do backend |
