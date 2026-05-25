@@ -38,7 +38,7 @@ public sealed class AccountController : Controller
         _jwtOptions = jwtOptions.Value;
     }
 
-    [HttpPost("/account/login")]
+    [HttpPost("/account/signin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(
         [FromForm] string email,
@@ -63,7 +63,7 @@ public sealed class AccountController : Controller
         return await CompleteLoginAsync(login.ToExternalLoginResult(), returnUrl, cancellationToken);
     }
 
-    [HttpPost("/account/external-login")]
+    [HttpPost("/account/external-signin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ExternalLogin(
         [FromForm] string providerAlias,

@@ -38,7 +38,7 @@ IdPPlatform.API             → Controllers ASP.NET Core, Program.cs, middleware
 ### Fluxo de autenticação
 
 ```
-POST /account/login (email + senha)
+POST /account/signin (email + senha)
   → SessionCookie com OidcLoginContext
 
 GET /connect/authorize (PKCE)
@@ -222,10 +222,10 @@ curl http://localhost:5000/v1.0/platform/status
 | Método | Path | Auth | Descrição |
 |--------|------|------|-----------|
 | GET | `/account/login` | Público | Página de login (Blazor Web App Static SSR) |
-| POST | `/account/login` | Público | Handler de credencial local (cookie sign-in) |
+| POST | `/account/signin` | Público | Handler de credencial local (cookie sign-in) |
 | GET | `/account/register` | Público | Página de self-registration (Blazor SSR) |
 | POST | `/account/register` | Público, rate-limited | Handler de cadastro (cria User + UserCredential) |
-| POST | `/account/external-login` | Público | Handler de login federado (id_token do Firebase) |
+| POST | `/account/external-signin` | Público | Handler de login federado (id_token do Firebase) |
 | GET/POST | `/connect/authorize` | Cookie | Endpoint de autorização OIDC |
 | POST | `/connect/token` | Client credentials | Troca de código por token |
 | GET | `/.well-known/openid-configuration` | Público | Discovery OIDC |
@@ -262,7 +262,7 @@ A configuração de cada IdP externo fica em `ConfigJson` no banco (cadastro via
 | Tipo | `ConfigJson` (campos principais) | Login em `/account/login` |
 |------|----------------------------------|---------------------------|
 | `Local` | opcional / vazio | email + senha |
-| `Firebase` | `projectId`, `webApiKey`, `authDomain` (opcional), `serviceAccount` | botão Google (Firebase JS + `POST /account/external-login`) |
+| `Firebase` | `projectId`, `webApiKey`, `authDomain` (opcional), `serviceAccount` | botão Google (Firebase JS + `POST /account/external-signin`) |
 | `Cognito` | `userPoolId`, `region`, `clientId` | cadastro validado; login ainda não implementado |
 | `Generic` | `issuer`, `jwksUri`, `audience` | cadastro validado; login ainda não implementado |
 

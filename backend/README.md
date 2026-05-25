@@ -38,7 +38,7 @@ IdPPlatform.API             → ASP.NET Core controllers, Program.cs, middleware
 ### Authentication flow
 
 ```
-POST /account/login (email + password)
+POST /account/signin (email + password)
   → SessionCookie with OidcLoginContext
 
 GET /connect/authorize (PKCE)
@@ -225,10 +225,10 @@ curl http://localhost:5000/v1.0/platform/status
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/account/login` | Public | Login page (Blazor Web App Static SSR) |
-| POST | `/account/login` | Public | Local credential handler (cookie sign-in) |
+| POST | `/account/signin` | Public | Local credential handler (cookie sign-in) |
 | GET | `/account/register` | Public | Self-registration page (Blazor SSR) |
 | POST | `/account/register` | Public, rate-limited | Self-registration handler (creates User + UserCredential) |
-| POST | `/account/external-login` | Public | Federated login handler (Firebase id_token) |
+| POST | `/account/external-signin` | Public | Federated login handler (Firebase id_token) |
 | GET/POST | `/connect/authorize` | Cookie | OIDC authorization endpoint |
 | POST | `/connect/token` | Client credentials | Code-to-token exchange |
 | GET | `/.well-known/openid-configuration` | Public | OIDC discovery |
@@ -268,7 +268,7 @@ Each external IdP's configuration lives in the database (`ConfigJson`), entered 
 | Type | `ConfigJson` (main fields) | Login on `/account/login` |
 |------|-----------------------------|---------------------------|
 | `Local` | optional / empty | email + password |
-| `Firebase` | `projectId`, `webApiKey`, `authDomain` (optional), `serviceAccount` | Google button (Firebase JS + `POST /account/external-login`) |
+| `Firebase` | `projectId`, `webApiKey`, `authDomain` (optional), `serviceAccount` | Google button (Firebase JS + `POST /account/external-signin`) |
 | `Cognito` | `userPoolId`, `region`, `clientId` | registration validated; login not yet implemented |
 | `Generic` | `issuer`, `jwksUri`, `audience` | registration validated; login not yet implemented |
 

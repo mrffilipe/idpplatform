@@ -28,7 +28,7 @@
 
     @if (_showLocal)
     {
-        <form method="post" action="/account/login" class="account-form" novalidate>
+        <form method="post" action="/account/signin" class="account-form" novalidate>
             <input type="hidden" name="__RequestVerificationToken" value="@_antiforgeryToken" />
             <input type="hidden" name="returnUrl" value="@ReturnUrl" />
 
@@ -72,7 +72,7 @@
 
     @if (_federated.Count > 0)
     {
-        <form id="external-login-form" method="post" action="/account/external-login" class="account-hidden-form">
+        <form id="external-login-form" method="post" action="/account/external-signin" class="account-hidden-form">
             <input type="hidden" name="__RequestVerificationToken" value="@_antiforgeryToken" />
             <input type="hidden" name="returnUrl" value="@ReturnUrl" />
             <input type="hidden" name="providerAlias" id="external-provider-alias" />

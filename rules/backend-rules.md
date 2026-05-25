@@ -107,7 +107,7 @@ Dependency direction: `API → Application → Domain`, `Infrastructure → Appl
 ## 9.3 UI rendering
 
 - Server-rendered pages for the IdP UI (login, register, future account screens) are implemented with **Blazor Web App Static Server Rendering** (`AddRazorComponents` + `MapRazorComponents<App>`) under `IdPPlatform.API/Components/`.
-- The previous MVC Razor views under `/Views/` were removed. `AddControllersWithViews()` was replaced by `AddControllers()`; controllers are used only for JSON APIs and form POST handlers (`/account/login`, `/account/external-login`, `/account/logout`).
+- The previous MVC Razor views under `/Views/` were removed. `AddControllersWithViews()` was replaced by `AddControllers()`; controllers are used only for JSON APIs and form POST handlers (`/account/signin`, `/account/external-signin`, `/account/logout`). GET login UI stays on the Blazor page `/account/login`.
 - The legacy Firebase popup flow was replaced by `signInWithRedirect` (full-page redirect to `accounts.google.com`, returns to `/account/login`, JS auto-submits the encoded id token to the controller). NEVER reintroduce popups: they break on mobile, are blocked by browsers, and weaken the phishing signal in the address bar.
 - Static assets live in `IdPPlatform.API/wwwroot/`. The account stylesheet is `css/account.css` and uses only CSS variables + `prefers-color-scheme` for theming (no framework, no build step).
 - Antiforgery: every form (Blazor `EditForm` or plain HTML) MUST include the antiforgery token. Blazor `EditForm` adds it automatically; plain forms render `<input type="hidden" name="__RequestVerificationToken" value="@_antiforgeryToken" />` populated from `IAntiforgery.GetAndStoreTokens(HttpContext)`.
