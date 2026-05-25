@@ -36,7 +36,7 @@ Clone o repositório:
 
 ```bash
 git clone https://github.com/mrffilipe/idpplatform.git
-cd idpplatformproject
+cd idpplatform
 ```
 
 ---
@@ -323,7 +323,7 @@ Implante o IdP Platform com **imagens de container publicadas**. Não é necess�
 |------------|------------|
 | Docker Engine + Docker Compose v2 | Executar containers |
 | PostgreSQL + Redis | Acessíveis pelo container do app |
-| Imagem publicada no Docker Hub | `mrffilipe/idpplatform:<tag>` via `DOCKERHUB_USERNAME` / `IMAGE_TAG` |
+| Imagem publicada no Docker Hub | `mrffilipe/idpplatform:<tag>` (defina `IMAGE_TAG` no `.env`) |
 | Certificados TLS | `fullchain.pem` e `privkey.pem` em `./certs/` |
 
 Não é necessário .NET SDK nem Node.js no host, salvo para gerar a chave OIDC a partir deste repo.
@@ -432,7 +432,7 @@ Salve como `docker-compose.yml` na pasta de deploy:
 
 services:
   app:
-    image: ${DOCKERHUB_USERNAME}/idpplatform:${IMAGE_TAG:-latest}
+    image: mrffilipe/idpplatform:${IMAGE_TAG:-latest}
     container_name: idpplatform-app
     restart: unless-stopped
     env_file:
@@ -458,7 +458,7 @@ volumes:
 Salve como `.env` ao lado de `docker-compose.yml`:
 
 ```env
-DOCKERHUB_USERNAME=mrffilipe
+# Imagem publicada (Docker Hub: mrffilipe/idpplatform)
 IMAGE_TAG=1.0.0
 
 PROXY_HTTP_PORT=80

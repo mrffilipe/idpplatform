@@ -1,5 +1,5 @@
 # Build from repository root:
-#   docker build -f backend/Dockerfile -t <username>/idpplatform-api:<tag> .
+#   docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
 
 # Restore and publish the API
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build

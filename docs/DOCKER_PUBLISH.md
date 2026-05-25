@@ -50,14 +50,15 @@ Workflow: [.github/workflows/docker-publish.yml](../.github/workflows/docker-pub
 | **Triggers** | Git tag push matching `v*` (e.g. `v1.0.0`); manual `workflow_dispatch` |
 | **Job** | `build-app` |
 | **Registry** | Docker Hub |
-| **Image** | `${{ secrets.DOCKERHUB_USERNAME }}/idpplatform` |
+| **Image** | `mrffilipe/idpplatform` |
 
 ### Repository secrets (required)
 
 | Secret | Purpose |
 |--------|---------|
-| `DOCKERHUB_USERNAME` | Docker Hub user or org |
-| `DOCKERHUB_TOKEN` | Access token with push permission |
+| `DOCKERHUB_TOKEN` | Access token for Docker Hub user **mrffilipe** (push permission) |
+
+Login username is fixed in the workflow (`mrffilipe`); no `DOCKERHUB_USERNAME` secret is required.
 
 No repository variables are required for the workflow (monolith SPA build uses empty `VITE_API_BASE_URL` / `VITE_OAUTH_REDIRECT_URI` for same-origin).
 
@@ -121,13 +122,13 @@ Optional: `docker scout quickview mrffilipe/idpplatform:<version>`
 
 ## GitHub Container Registry (alternative)
 
-Same Dockerfile; change the image prefix to `ghcr.io/<owner>/idpplatform`.
+Same Dockerfile; image prefix `ghcr.io/mrffilipe/idpplatform`.
 
 ```bash
-echo $GITHUB_TOKEN | docker login ghcr.io -u <github-user> --password-stdin
+echo $GITHUB_TOKEN | docker login ghcr.io -u mrffilipe --password-stdin
 
 docker tag mrffilipe/idpplatform:<version> ghcr.io/mrffilipe/idpplatform:<version>
-docker push ghcr.io/<owner>/idpplatform:<version>
+docker push ghcr.io/mrffilipe/idpplatform:<version>
 ```
 
 PAT needs `write:packages` (and `read:packages` for private images).

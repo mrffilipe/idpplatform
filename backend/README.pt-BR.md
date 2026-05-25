@@ -155,7 +155,7 @@ O JSON de configuração dos IdPs (`IdentityProvider.ConfigJson`) costuma conter
 Na raiz do repositório:
 
 ```bash
-docker build -f backend/Dockerfile -t <usuario-dockerhub>/idpplatform-api:<tag> .
+docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
 ```
 
 ---

@@ -155,7 +155,7 @@ Identity provider configuration JSON (`IdentityProvider.ConfigJson`) frequently 
 From the repository root:
 
 ```bash
-docker build -f backend/Dockerfile -t <dockerhub-username>/idpplatform-api:<tag> .
+docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
 ```
 
 ---

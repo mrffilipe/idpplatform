@@ -50,14 +50,15 @@ Workflow: [.github/workflows/docker-publish.yml](../.github/workflows/docker-pub
 | **Gatilhos** | Tag `v*`; `workflow_dispatch` |
 | **Job** | `build-app` |
 | **Registry** | Docker Hub |
-| **Imagem** | `${{ secrets.DOCKERHUB_USERNAME }}/idpplatform` |
+| **Imagem** | `mrffilipe/idpplatform` |
 
 ### Secrets (obrigatórios)
 
 | Secret | Finalidade |
 |--------|------------|
-| `DOCKERHUB_USERNAME` | Usuário ou org Docker Hub |
-| `DOCKERHUB_TOKEN` | Token com permissão de push |
+| `DOCKERHUB_TOKEN` | Token de acesso do usuário **mrffilipe** no Docker Hub (permissão de push) |
+
+O login usa o usuário fixo `mrffilipe` no workflow; não é necessário o secret `DOCKERHUB_USERNAME`.
 
 Não são necessárias Variables no GitHub para o workflow.
 
@@ -95,7 +96,7 @@ docker push mrffilipe/idpplatform:latest
 
 ```bash
 docker tag mrffilipe/idpplatform:<versao> ghcr.io/mrffilipe/idpplatform:<versao>
-docker push ghcr.io/<owner>/idpplatform:<versao>
+docker push ghcr.io/mrffilipe/idpplatform:<versao>
 ```
 
 ---

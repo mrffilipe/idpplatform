@@ -1,15 +1,14 @@
 # Maintainer workflow: build and push the IdP Platform monolith image to Docker Hub.
 #
-# Image: <DOCKERHUB_USERNAME>/idpplatform (API + admin SPA + nginx TLS proxy)
+# Image: mrffilipe/idpplatform (API + admin SPA + nginx TLS proxy)
 # SPA uses same origin as nginx (empty VITE_API_BASE_URL at build); operators set Jwt__Issuer in .env.
 #
 # Triggers:
 #   - Push of a version tag matching v* (e.g. v1.0.0)
 #   - Manual run (workflow_dispatch)
 #
-# Required repository secrets:
-#   DOCKERHUB_USERNAME — Docker Hub user or organization
-#   DOCKERHUB_TOKEN    — access token with push permission
+# Required repository secret:
+#   DOCKERHUB_TOKEN — access token for user mrffilipe (push permission)
 
 name: Docker publish
 
@@ -33,7 +32,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: mrffilipe
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # Semver tags from git tag v1.2.3 → 1.2.3, 1.2, 1, latest
@@ -41,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/idpplatform
+          images: mrffilipe/idpplatform
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
