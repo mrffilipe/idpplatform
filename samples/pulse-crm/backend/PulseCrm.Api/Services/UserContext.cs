@@ -13,7 +13,10 @@ public sealed class UserContext : IUserContext
 
     private ClaimsPrincipal? User => _httpContextAccessor.HttpContext?.User;
 
-    public Guid? UserId => ParseGuid(User?.FindFirst("uid")?.Value ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+    public Guid? UserId => ParseGuid(
+        User?.FindFirst("uid")?.Value
+        ?? User?.FindFirst("sub")?.Value
+        ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
     public Guid? TenantId => ParseGuid(User?.FindFirst("tid")?.Value);
 

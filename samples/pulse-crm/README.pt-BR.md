@@ -6,7 +6,7 @@ SPA + API que simulam um CRM SaaS integrado à plataforma: login OIDC, escolha d
 
 ## Pré-requisitos
 
-- IdP Platform rodando (`http://localhost:5000`) com bootstrap concluído
+- IdP Platform com bootstrap concluído (`http://localhost:5000` no código-fonte ou **`https://localhost:8443`** no Docker)
 - Application + OAuth client criados no painel (ver [../README.md](../README.md))
 - Conta de usuário no IdP — admin do bootstrap, convite aceito, OU nova conta criada pela página central **/account/register** do IdP (o sample não tem tela própria de cadastro).
 - .NET 8 SDK e Node.js LTS
@@ -40,6 +40,22 @@ npm run dev
 ```
 
 Abra http://localhost:5173
+
+## IdP no Docker (`https://localhost:8443`)
+
+1. Cadastre **Pulse CRM** / client `pulse-crm-web` no painel em `https://localhost:8443` (redirect `http://localhost:5173/auth/callback`).
+2. Frontend `.env`: `VITE_IDP_AUTHORITY=https://localhost:8443`
+3. API `appsettings.Development.json`:
+
+```json
+"IdP": {
+  "Authority": "https://localhost:8443",
+  "Audience": "idpplatform-api",
+  "AllowInvalidIdpCertificate": true
+}
+```
+
+`AllowInvalidIdpCertificate` permite à API do CRM confiar no certificado autoassinado do IdP em dev (JWKS + `auth/subscribe`). **Reinicie** o `dotnet run` após alterar o JSON.
 
 ## Fluxo de teste
 

@@ -14,6 +14,12 @@ builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOpt
 var idpOptions = builder.Configuration.GetSection(IdPOptions.Section).Get<IdPOptions>()
     ?? new IdPOptions();
 
+var allowInvalidIdpCertificate = builder.Configuration.GetValue(
+    "IdP:AllowInvalidIdpCertificate",
+    builder.Environment.IsDevelopment());
+
+var idpBackchannelHandler = DevIdpHttpHandler.Create(allowInvalidIdpCertificate);
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -21,6 +27,7 @@ builder.Services
         options.Authority = idpOptions.Authority.TrimEnd('/');
         options.Audience = idpOptions.Audience;
         options.RequireHttpsMetadata = false;
+        options.BackchannelHttpHandler = idpBackchannelHandler;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -28,7 +35,7 @@ builder.Services
             ValidateAudience = true,
             ValidAudience = idpOptions.Audience,
             ValidateLifetime = true,
-            NameClaimType = "email",
+            NameClaimType = "sub",
             RoleClaimType = "trole"
         };
     });
@@ -38,9 +45,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserContext, UserContext>();
 
 builder.Services.AddHttpClient<IIdPSubscribeClient, IdPSubscribeClient>(client =>
-{
-    client.BaseAddress = new Uri(idpOptions.Authority.TrimEnd('/') + "/");
-});
+    {
+        client.BaseAddress = new Uri(idpOptions.Authority.TrimEnd('/') + "/");
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => DevIdpHttpHandler.Create(allowInvalidIdpCertificate));
 
 builder.Services.AddDbContext<PulseCrmDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("PulseCrm")));
