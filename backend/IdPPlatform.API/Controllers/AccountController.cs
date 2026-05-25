@@ -7,6 +7,7 @@ using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Entities;
 using IdPPlatform.Domain.Repositories;
 using IdPPlatform.Infrastructure.Configurations;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -23,29 +24,38 @@ public sealed class AccountController : Controller
     private readonly IAuthSessionRepository _sessions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtOptions _jwtOptions;
+    private readonly IAntiforgery _antiforgery;
 
     public AccountController(
         ILocalAuthenticationService localAuth,
         IExternalLoginService externalLogin,
         IAuthSessionRepository sessions,
         IUnitOfWork unitOfWork,
-        IOptions<JwtOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions,
+        IAntiforgery antiforgery)
     {
         _localAuth = localAuth;
         _externalLogin = externalLogin;
         _sessions = sessions;
         _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
+        _antiforgery = antiforgery;
     }
 
     [HttpPost("/account/signin")]
-    [ValidateAntiForgeryToken]
+    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Login(
         [FromForm] string email,
         [FromForm] string password,
         [FromForm] string? returnUrl,
         CancellationToken cancellationToken)
     {
+        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(returnUrl, cancellationToken);
+        if (antiforgeryFailure is not null)
+        {
+            return antiforgeryFailure;
+        }
+
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
             return RedirectToLogin(returnUrl, "missing_fields");
@@ -64,13 +74,19 @@ public sealed class AccountController : Controller
     }
 
     [HttpPost("/account/external-signin")]
-    [ValidateAntiForgeryToken]
+    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> ExternalLogin(
         [FromForm] string providerAlias,
         [FromForm] string idToken,
         [FromForm] string? returnUrl,
         CancellationToken cancellationToken)
     {
+        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(returnUrl, cancellationToken);
+        if (antiforgeryFailure is not null)
+        {
+            return antiforgeryFailure;
+        }
+
         if (string.IsNullOrWhiteSpace(providerAlias) || string.IsNullOrWhiteSpace(idToken))
         {
             return RedirectToLogin(returnUrl, "invalid_provider");
@@ -92,11 +108,28 @@ public sealed class AccountController : Controller
 
     [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
     [HttpPost("/account/logout")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        if (!await _antiforgery.IsRequestValidAsync(HttpContext))
+        {
+            return Redirect("/account/login");
+        }
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Redirect("/");
+    }
+
+    private async Task<IActionResult?> TryRedirectOnAntiforgeryFailureAsync(
+        string? returnUrl,
+        CancellationToken cancellationToken)
+    {
+        if (await _antiforgery.IsRequestValidAsync(HttpContext))
+        {
+            return null;
+        }
+
+        return RedirectToLogin(returnUrl, "session_expired");
     }
 
     private IActionResult RedirectToLogin(string? returnUrl, string errorCode)
@@ -146,15 +179,17 @@ public sealed class AccountController : Controller
         var principal = new ClaimsPrincipal(
             new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
 
+        var redirectTarget = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
+
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
             {
                 IsPersistent = true,
-                RedirectUri = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl
+                RedirectUri = redirectTarget
             });
 
-        return Redirect(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+        return LocalRedirect(redirectTarget);
     }
 }

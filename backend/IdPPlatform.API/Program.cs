@@ -9,6 +9,7 @@ using IdPPlatform.Infrastructure.Configurations;
 using IdPPlatform.Infrastructure.Extensions;
 using IdPPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http;
 using TenancyKit.AspNetCore;
 using TenancyKit.Core;
 
@@ -96,7 +97,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
+
 var app = builder.Build();
+
+// Must run before other middleware so HTTPS/host behind nginx are correct (cookies, redirects).
+app.UseForwardedHeaders();
 
 app.UseMiddleware<ApplicationExceptionMiddleware>();
 
@@ -107,7 +117,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 }
 
 app.UseCors("AllowAll");
-app.UseForwardedHeaders();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMultiTenancy<TenantInfoAdapter>();

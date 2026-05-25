@@ -35,6 +35,8 @@ public static class PlatformOidcServiceCollectionExtensions
                 options.LogoutPath = "/account/logout";
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
                 options.SlidingExpiration = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.Cookie.SameSite = SameSiteMode.Lax;
             })
             .AddJwtBearer();
 

@@ -26,5 +26,6 @@ public static class ApiErrorMessages
         public const string EmailAndPasswordRequired = "Email and password are required.";
         public const string InvalidEmailOrPassword = "Invalid email or password.";
         public const string InvalidProviderOrToken = "Invalid provider or token.";
+        public const string SessionExpiredRetryLogin = "Your session expired. Refresh the page and sign in again.";
     }
 }
