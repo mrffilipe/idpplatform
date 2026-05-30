@@ -1,8 +1,8 @@
+using IdPPlatform.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PulseCrm.Api.Data;
-using PulseCrm.Api.Services;
 
 namespace PulseCrm.Api.Controllers;
 
@@ -11,10 +11,10 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/subscription")]
 public sealed class SubscriptionController : ControllerBase
 {
-    private readonly IUserContext _user;
+    private readonly IIdPUserContext _user;
     private readonly PulseCrmDbContext _db;
 
-    public SubscriptionController(IUserContext user, PulseCrmDbContext db)
+    public SubscriptionController(IIdPUserContext user, PulseCrmDbContext db)
     {
         _user = user;
         _db = db;

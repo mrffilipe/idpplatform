@@ -1,6 +1,6 @@
+import { normalizeOidcTokenResponse } from '@idpplatform/client'
 import type { OidcTokenResponse } from '../types/oidc'
-
-const SESSION_KEY = 'pulsecrm.auth.session'
+import { idpClient } from '../config/idpClient'
 
 export interface AuthSession {
   accessToken: string
@@ -9,43 +9,31 @@ export interface AuthSession {
 }
 
 export function getSession(): AuthSession | null {
-  const raw = localStorage.getItem(SESSION_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as AuthSession
-  } catch {
-    localStorage.removeItem(SESSION_KEY)
-    return null
+  const s = idpClient.session.getSession()
+  if (!s) return null
+  return {
+    accessToken: s.accessToken,
+    refreshToken: s.refreshToken ?? '',
+    expiresAtIso: new Date(s.expiresAt).toISOString(),
   }
 }
 
 export function saveSession(tokens: OidcTokenResponse): AuthSession {
-  const session: AuthSession = {
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    expiresAtIso: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-  }
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  return session
+  idpClient.session.saveFromTokens(tokens)
+  return getSession()!
 }
 
 export function updateAccessToken(tokens: OidcTokenResponse): AuthSession {
-  const current = getSession()
-  const session: AuthSession = {
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token || current?.refreshToken || '',
-    expiresAtIso: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-  }
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  return session
+  idpClient.session.updateAccessToken(tokens)
+  return getSession()!
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(SESSION_KEY)
+  idpClient.session.clear()
 }
 
 export function isLoggedIn(): boolean {
-  return Boolean(getSession()?.accessToken)
+  return Boolean(idpClient.getAccessToken())
 }
 
 const ONBOARDING_PLAN_KEY = 'pulsecrm.onboarding.plan'
@@ -67,3 +55,5 @@ export function clearOnboardingDraft(): void {
   sessionStorage.removeItem(ONBOARDING_PLAN_KEY)
   sessionStorage.removeItem(ONBOARDING_COMPANY_KEY)
 }
+
+export { normalizeOidcTokenResponse }

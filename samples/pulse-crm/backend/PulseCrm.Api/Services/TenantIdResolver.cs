@@ -1,3 +1,4 @@
+using IdPPlatform.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using PulseCrm.Api.Data;
 
@@ -6,7 +7,7 @@ namespace PulseCrm.Api.Services;
 internal static class TenantIdResolver
 {
     public static async Task<Guid?> ResolveAsync(
-        IUserContext user,
+        IIdPUserContext user,
         PulseCrmDbContext db,
         CancellationToken cancellationToken = default)
     {

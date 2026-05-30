@@ -1,6 +1,6 @@
 namespace PulseCrm.Api.Data;
 
-public sealed class Contact
+public sealed class Contact : ITenantOwned
 {
     public Guid Id { get; set; }
 

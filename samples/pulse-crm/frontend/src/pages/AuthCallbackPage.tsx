@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import {
-  clearOidcRequest,
-  consumeState,
-  consumeVerifier,
-  exchangeCode,
-  releaseCallbackLock,
-  tryAcquireCallbackLock,
-} from '../services/idpOidc'
+import { idpClient } from '../config/idpClient'
 import { saveSession } from '../utils/authStorage'
 import { getMe } from '../services/crmApi'
 
@@ -29,19 +22,18 @@ export function AuthCallbackPage() {
       return
     }
 
-    if (!tryAcquireCallbackLock()) return
+    if (!idpClient.oidc.tryAcquireCallbackLock()) return
 
     void (async () => {
       try {
-        consumeState(searchParams.get('state'))
-        const tokens = await exchangeCode(code, consumeVerifier())
-        clearOidcRequest()
+        const tokens = await idpClient.oidc.handleCallback(code, searchParams.get('state'))
+        idpClient.oidc.clearOidcRequest()
         saveSession(tokens)
 
         const me = await getMe()
         navigate(me.hasSubscription ? '/dashboard' : '/onboarding', { replace: true })
       } catch (e) {
-        releaseCallbackLock()
+        idpClient.oidc.releaseCallbackLock()
         setError(e instanceof Error ? e.message : 'Callback failed')
       }
     })()

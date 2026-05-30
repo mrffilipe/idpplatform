@@ -1,9 +1,11 @@
+using IdPPlatform.AspNetCore;
+using IdPPlatform.Client;
+using IdPPlatform.Client.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PulseCrm.Api.Data;
 using PulseCrm.Api.Helpers;
-using PulseCrm.Api.Services;
 
 namespace PulseCrm.Api.Controllers;
 
@@ -12,15 +14,21 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/onboarding")]
 public sealed class OnboardingController : ControllerBase
 {
-    private readonly IUserContext _user;
+    private readonly IIdPUserContext _user;
     private readonly PulseCrmDbContext _db;
-    private readonly IIdPSubscribeClient _idp;
+    private readonly IIdPProductClient _idp;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public OnboardingController(IUserContext user, PulseCrmDbContext db, IIdPSubscribeClient idp)
+    public OnboardingController(
+        IIdPUserContext user,
+        PulseCrmDbContext db,
+        IIdPProductClient idp,
+        IHttpContextAccessor httpContextAccessor)
     {
         _user = user;
         _db = db;
         _idp = idp;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     [HttpPost("complete")]
@@ -47,20 +55,19 @@ public sealed class OnboardingController : ControllerBase
             return Conflict(new { message = "User already completed onboarding.", subscription = existing });
         }
 
-        var authHeader = Request.Headers.Authorization.ToString();
-        if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        var accessToken = _httpContextAccessor.GetUserAccessToken();
+        if (string.IsNullOrWhiteSpace(accessToken))
         {
             return Unauthorized(new { message = "Bearer access token required." });
         }
 
-        var accessToken = authHeader["Bearer ".Length..].Trim();
         var tenantKey = SlugHelper.ToTenantKey(body.CompanyName);
         var externalCustomerId = body.PaymentReference ?? $"pay_mock_{Guid.NewGuid():N}"[..24];
 
-        IdPSubscribeResult idpSubscribe;
+        SubscribeTenantResult idpSubscribe;
         try
         {
-            idpSubscribe = await _idp.SubscribeAsync(
+            idpSubscribe = await _idp.Auth.SubscribeAsync(
                 accessToken,
                 new SubscribeTenantRequest(
                     body.CompanyName.Trim(),
@@ -69,7 +76,7 @@ public sealed class OnboardingController : ControllerBase
                     externalCustomerId),
                 cancellationToken);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
             return StatusCode(502, new { message = ex.Message });
         }

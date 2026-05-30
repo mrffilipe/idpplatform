@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { redirectToLogin } from '../services/idpOidc'
+import { idpClient } from '../config/idpClient'
 import { isLoggedIn } from '../utils/authStorage'
 import { getMe } from '../services/crmApi'
-import { useEffect } from 'react'
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
@@ -25,7 +24,7 @@ export function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      await redirectToLogin()
+      await idpClient.oidc.signInRedirect()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed')
       setLoading(false)

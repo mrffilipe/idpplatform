@@ -1,12 +1,11 @@
 import { Link, Outlet } from 'react-router-dom'
-import { env } from '../config/env'
+import { idpClient } from '../config/idpClient'
 import { clearSession } from '../utils/authStorage'
 
 export function Layout() {
   function handleLogout() {
     clearSession()
-    const redirect = `${window.location.origin}/login`
-    window.location.href = `${env.idpAuthority}/connect/logout?client_id=${encodeURIComponent(env.idpClientId)}&post_logout_redirect_uri=${encodeURIComponent(redirect)}`
+    idpClient.oidc.signOut(`${window.location.origin}/login`)
   }
 
   return (

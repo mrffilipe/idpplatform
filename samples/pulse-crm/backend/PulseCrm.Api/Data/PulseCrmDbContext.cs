@@ -1,12 +1,24 @@
 using Microsoft.EntityFrameworkCore;
+using TenancyKit.Abstractions;
+using TenancyKit.Core;
+using TenancyKit.EntityFrameworkCore;
+using IdPPlatform.AspNetCore.TenancyKit;
 
 namespace PulseCrm.Api.Data;
 
 public sealed class PulseCrmDbContext : DbContext
 {
-    public PulseCrmDbContext(DbContextOptions<PulseCrmDbContext> options)
+    private readonly TenancyKitOptions<ProductTenantInfo> _tenancyOptions;
+    private readonly ITenantContextAccessor<ProductTenantInfo> _tenantContextAccessor;
+
+    public PulseCrmDbContext(
+        DbContextOptions<PulseCrmDbContext> options,
+        TenancyKitOptions<ProductTenantInfo> tenancyOptions,
+        ITenantContextAccessor<ProductTenantInfo> tenantContextAccessor)
         : base(options)
     {
+        _tenancyOptions = tenancyOptions;
+        _tenantContextAccessor = tenantContextAccessor;
     }
 
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -34,5 +46,7 @@ public sealed class PulseCrmDbContext : DbContext
             entity.Property(x => x.Email).HasMaxLength(320);
             entity.Property(x => x.Phone).HasMaxLength(40);
         });
+
+        modelBuilder.ApplyMultiTenancy(_tenancyOptions, _tenantContextAccessor);
     }
 }

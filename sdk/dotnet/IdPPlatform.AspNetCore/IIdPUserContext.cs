@@ -1,6 +1,6 @@
-namespace PulseCrm.Api.Services;
+namespace IdPPlatform.AspNetCore;
 
-public interface IUserContext
+public interface IIdPUserContext
 {
     Guid? UserId { get; }
 
@@ -14,5 +14,7 @@ public interface IUserContext
 
     IReadOnlyList<string> PlatformRoles { get; }
 
-    IReadOnlyDictionary<string, string> AllClaims { get; }
+    bool HasTenantRole(params string[] roles);
+
+    bool HasPlatformRole(params string[] roles);
 }

@@ -1,3 +1,4 @@
+using IdPPlatform.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,10 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/contacts")]
 public sealed class ContactsController : ControllerBase
 {
-    private readonly IUserContext _user;
+    private readonly IIdPUserContext _user;
     private readonly PulseCrmDbContext _db;
 
-    public ContactsController(IUserContext user, PulseCrmDbContext db)
+    public ContactsController(IIdPUserContext user, PulseCrmDbContext db)
     {
         _user = user;
         _db = db;
@@ -34,7 +35,6 @@ public sealed class ContactsController : ControllerBase
 
         var contacts = await _db.Contacts
             .AsNoTracking()
-            .Where(c => c.TenantId == tenantId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -52,7 +52,7 @@ public sealed class ContactsController : ControllerBase
 
         var contact = await _db.Contacts
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         return contact is null ? NotFound() : Ok(contact);
     }
@@ -100,8 +100,7 @@ public sealed class ContactsController : ControllerBase
             return BadRequest(new { message = "Tenant não identificado." });
         }
 
-        var contact = await _db.Contacts
-            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId, cancellationToken);
+        var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         if (contact is null)
         {
@@ -129,8 +128,7 @@ public sealed class ContactsController : ControllerBase
             return BadRequest(new { message = "Tenant não identificado." });
         }
 
-        var contact = await _db.Contacts
-            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId, cancellationToken);
+        var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         if (contact is null)
         {

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IdPPlatform.AspNetCore</RootNamespace>
+    <AssemblyName>IdPPlatform.AspNetCore</AssemblyName>
+    <Version>1.0.0</Version>
+    <Description>JWT authentication and user context for IdP Platform product APIs.</Description>
+    <Authors>IdP Platform</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.16" />
+  </ItemGroup>
+
+</Project>

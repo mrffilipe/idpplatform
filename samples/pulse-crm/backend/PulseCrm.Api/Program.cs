@@ -1,57 +1,50 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using IdPPlatform.AspNetCore;
+using IdPPlatform.AspNetCore.TenancyKit;
+using IdPPlatform.Client;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using PulseCrm.Api.Configuration;
 using PulseCrm.Api.Data;
 using PulseCrm.Api.Services;
+using TenancyKit.AspNetCore;
+using TenancyKit.Core;
+using TenancyKit.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<IdPOptions>(builder.Configuration.GetSection(IdPOptions.Section));
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.Section));
-
-var idpOptions = builder.Configuration.GetSection(IdPOptions.Section).Get<IdPOptions>()
-    ?? new IdPOptions();
 
 var allowInvalidIdpCertificate = builder.Configuration.GetValue(
     "IdP:AllowInvalidIdpCertificate",
     builder.Environment.IsDevelopment());
 
-var idpBackchannelHandler = DevIdpHttpHandler.Create(allowInvalidIdpCertificate);
+builder.Services
+    .AddIdPPlatformAuthentication(builder.Configuration, IdPPlatformOptions.SectionName)
+    .PostConfigure<IdPPlatformOptions>(o => o.AllowInvalidCertificate = allowInvalidIdpCertificate);
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddIdPPlatformClient(builder.Configuration)
+    .PostConfigure<IdPPlatformClientOptions>(o => o.AllowInvalidCertificate = allowInvalidIdpCertificate);
+
+builder.Services
+    .AddIdPPlatformTenancyKit<ProductTenantInfo>(options =>
     {
-        options.Authority = idpOptions.Authority.TrimEnd('/');
-        options.Audience = idpOptions.Audience;
-        options.RequireHttpsMetadata = false;
-        options.BackchannelHttpHandler = idpBackchannelHandler;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = idpOptions.Authority.TrimEnd('/'),
-            ValidateAudience = true,
-            ValidAudience = idpOptions.Audience,
-            ValidateLifetime = true,
-            NameClaimType = "sub",
-            RoleClaimType = "trole"
-        };
+        options.UseMissingTenantBehavior(MissingTenantBehavior.Ignore);
+        options.UseClaimsTenantResolver("tid");
+        options.UseClaimPassthroughTenantStore();
+        options.ConfigureEntity<ITenantOwned, Guid>(e => e.TenantId);
     });
+
+builder.Services.AddScoped<TenancyKitSaveChangesInterceptor<ProductTenantInfo>>();
+builder.Services.AddDbContext<PulseCrmDbContext>((provider, options) =>
+{
+    options
+        .UseSqlite(builder.Configuration.GetConnectionString("PulseCrm"))
+        .AddInterceptors(provider.GetRequiredService<TenancyKitSaveChangesInterceptor<ProductTenantInfo>>());
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IUserContext, UserContext>();
-
-builder.Services.AddHttpClient<IIdPSubscribeClient, IdPSubscribeClient>(client =>
-    {
-        client.BaseAddress = new Uri(idpOptions.Authority.TrimEnd('/') + "/");
-    })
-    .ConfigurePrimaryHttpMessageHandler(() => DevIdpHttpHandler.Create(allowInvalidIdpCertificate));
-
-builder.Services.AddDbContext<PulseCrmDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("PulseCrm")));
 
 builder.Services
     .AddControllers()
@@ -91,6 +84,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("PulseCrmSpa");
 app.UseAuthentication();
+app.UseMultiTenancy<ProductTenantInfo>();
 app.UseAuthorization();
 app.MapControllers();
 

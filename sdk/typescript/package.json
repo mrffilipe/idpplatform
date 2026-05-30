@@ -1,0 +1,12 @@
+{
+  "name": "@idpplatform/sdk-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "@idpplatform/client"
+  ],
+  "scripts": {
+    "build": "npm run build -w @idpplatform/client",
+    "test": "npm run test -w @idpplatform/client"
+  }
+}

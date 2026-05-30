@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { idpClient } from '../config/idpClient'
 import { completeOnboarding } from '../services/crmApi'
-import { refreshAccessTokenWithTenant } from '../services/idpOidc'
 import { clearOnboardingDraft, getOnboardingDraft, updateAccessToken } from '../utils/authStorage'
-import { normalizeOidcTokenResponse } from '../utils/oidcToken'
+import { normalizeOidcTokenResponse } from '../utils/authStorage'
 import { PLANS } from '../types/crm'
 
 export function PaymentPage() {
@@ -45,7 +45,7 @@ export function PaymentPage() {
           }),
         )
       } else {
-        await refreshAccessTokenWithTenant()
+        await idpClient.refreshAccessTokenWithTenant()
       }
 
       clearOnboardingDraft()
@@ -71,8 +71,8 @@ export function PaymentPage() {
           <strong>Plano:</strong> {plan?.name ?? draft.planCode} — {plan?.price}
         </p>
         <p className="muted">
-          Ao confirmar, a API PulseCRM chama <code>POST /v1.0/auth/subscribe</code> na IdP Platform e grava o
-          vínculo application ↔ tenant com <code>planCode</code>.
+          Ao confirmar, a API PulseCRM chama <code>POST /v1.0/auth/subscribe</code> na IdP Platform (via SDK .NET)
+          e grava o vínculo application ↔ tenant com <code>planCode</code>.
         </p>
       </div>
       {error && <p className="error">{error}</p>}

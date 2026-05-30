@@ -1,9 +1,9 @@
 import axios, { type AxiosError } from 'axios'
 import { env } from '../config/env'
+import { idpClient } from '../config/idpClient'
 import type { Contact, MeResponse, OnboardingCompleteResponse } from '../types/crm'
 import { getSession, updateAccessToken } from '../utils/authStorage'
-import { jwtHasTenantClaim } from '../utils/jwt'
-import { refreshAccessTokenWithTenant, refreshTokens } from './idpOidc'
+import { hasTenant } from '@idpplatform/client'
 
 export const crmApi = axios.create({
   baseURL: env.crmApiUrl,
@@ -11,22 +11,22 @@ export const crmApi = axios.create({
 })
 
 crmApi.interceptors.request.use((config) => {
-  const session = getSession()
-  if (session?.accessToken) {
-    config.headers.Authorization = `Bearer ${session.accessToken}`
+  const token = idpClient.getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
-let refreshPromise: ReturnType<typeof refreshTokens> | null = null
-let tenantRefreshPromise: ReturnType<typeof refreshAccessTokenWithTenant> | null = null
+let refreshPromise: ReturnType<typeof idpClient.oidc.refresh> | null = null
+let tenantRefreshPromise: ReturnType<typeof idpClient.refreshAccessTokenWithTenant> | null = null
 
 function isMissingTenantError(error: AxiosError): boolean {
   const message = (error.response?.data as { message?: string } | undefined)?.message
   return (
     error.response?.status === 400 &&
     typeof message === 'string' &&
-    message.toLowerCase().includes('tid')
+    message.toLowerCase().includes('tenant')
   )
 }
 
@@ -44,7 +44,7 @@ crmApi.interceptors.response.use(
     if (isMissingTenantError(error) && !original._tenantRetry) {
       original._tenantRetry = true
       try {
-        if (!tenantRefreshPromise) tenantRefreshPromise = refreshAccessTokenWithTenant()
+        if (!tenantRefreshPromise) tenantRefreshPromise = idpClient.refreshAccessTokenWithTenant()
         const tokens = await tenantRefreshPromise
         original.headers.Authorization = `Bearer ${tokens.access_token}`
         return crmApi.request(original)
@@ -64,7 +64,7 @@ crmApi.interceptors.response.use(
 
     original._retry = true
     try {
-      if (!refreshPromise) refreshPromise = refreshTokens(session.refreshToken)
+      if (!refreshPromise) refreshPromise = idpClient.oidc.refresh(session.refreshToken)
       const tokens = await refreshPromise
       updateAccessToken(tokens)
       original.headers.Authorization = `Bearer ${tokens.access_token}`
@@ -75,19 +75,18 @@ crmApi.interceptors.response.use(
   },
 )
 
-/** Tenta renovar o token com tid; a API CRM também aceita tenant da assinatura local. */
 export async function ensureTenantAccessToken(): Promise<void> {
   const session = getSession()
   if (!session?.accessToken) {
     throw new Error('Sessão ausente. Faça login novamente.')
   }
-  if (jwtHasTenantClaim(session.accessToken)) {
+  if (hasTenant(session.accessToken)) {
     return
   }
   try {
-    await refreshAccessTokenWithTenant()
+    await idpClient.refreshAccessTokenWithTenant()
   } catch {
-    /* CRM resolve tenantId pela subscription quando o JWT ainda não tem tid */
+    /* CRM resolves tenantId from subscription when JWT lacks tid */
   }
 }
 

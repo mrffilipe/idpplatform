@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IdPPlatform.AspNetCore.TenancyKit</RootNamespace>
+    <Version>1.0.0</Version>
+    <Description>TenancyKit bridge for IdP Platform product APIs (tid claim).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="TenancyKit" Version="1.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdPPlatform.AspNetCore\IdPPlatform.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

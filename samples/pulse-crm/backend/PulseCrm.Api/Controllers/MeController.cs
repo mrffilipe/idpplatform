@@ -1,8 +1,8 @@
+using IdPPlatform.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PulseCrm.Api.Data;
-using PulseCrm.Api.Services;
 
 namespace PulseCrm.Api.Controllers;
 
@@ -11,10 +11,10 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/me")]
 public sealed class MeController : ControllerBase
 {
-    private readonly IUserContext _user;
+    private readonly IIdPUserContext _user;
     private readonly PulseCrmDbContext _db;
 
-    public MeController(IUserContext user, PulseCrmDbContext db)
+    public MeController(IIdPUserContext user, PulseCrmDbContext db)
     {
         _user = user;
         _db = db;
@@ -45,7 +45,6 @@ public sealed class MeController : ControllerBase
             jwtMembershipId = _user.MembershipId,
             tenantRoles = _user.TenantRoles,
             platformRoles = _user.PlatformRoles,
-            claims = _user.AllClaims,
             hasSubscription = subscription is not null,
             subscription = subscription is null
                 ? null
