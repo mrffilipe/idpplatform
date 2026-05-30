@@ -1,75 +1,79 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
+using IdPPlatform.Application.Common;
 using IdPPlatform.Application.Services.Membership;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Authorize]
+/// <summary>
+/// Tenant membership management (create, list, update roles, revoke).
+/// </summary>
 public sealed class MembershipsController : V1ApiControllerBase
 {
     private readonly IMembershipService _membershipService;
 
-    public MembershipsController(IMembershipService membershipService)
-    {
-        _membershipService = membershipService;
-    }
+    public MembershipsController(IMembershipService membershipService) => _membershipService = membershipService;
 
+    /// <summary>
+    /// Adds a user to a tenant with the given roles.
+    /// </summary>
     [HttpPost("/v{version:apiVersion}/tenants/{tenantId:guid}/memberships")]
-    public async Task<IActionResult> CreateMembership(
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CreatedIdResponse>> CreateMembership(
         Guid tenantId,
-        [FromBody] CreateMembershipBody body,
+        [FromBody] CreateMembershipRequest request,
         CancellationToken cancellationToken)
     {
         var id = await _membershipService.CreateAsync(
-            new CreateMembershipRequest
-            {
-                UserId = body.UserId,
-                TenantId = tenantId,
-                Roles = body.Roles
-            },
+            request with { TenantId = tenantId },
             cancellationToken);
 
-        return Ok(new { id });
+        return Ok(new CreatedIdResponse(id));
     }
 
+    /// <summary>
+    /// Lists memberships for a tenant.
+    /// </summary>
     [HttpGet("/v{version:apiVersion}/tenants/{tenantId:guid}/memberships")]
-    public async Task<IActionResult> ListMembershipsByTenant(
+    [ProducesResponseType(typeof(PagedResult<MembershipDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<MembershipDto>>> ListMembershipsByTenant(
         Guid tenantId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
+        [FromQuery] ListMembershipsByTenantRequest request,
+        CancellationToken cancellationToken)
     {
         var result = await _membershipService.ListByTenantAsync(
-            new ListMembershipsByTenantRequest
-            {
-                TenantId = tenantId,
-                Page = page,
-                PageSize = pageSize
-            },
+            request with { TenantId = tenantId },
             cancellationToken);
 
         return Ok(result);
     }
 
+    /// <summary>
+    /// Updates the roles assigned to a membership.
+    /// </summary>
     [HttpPatch("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateMembershipRole(
         Guid id,
-        [FromBody] UpdateMembershipRoleBody body,
+        [FromBody] UpdateMembershipRolesRequest request,
         CancellationToken cancellationToken)
     {
         await _membershipService.UpdateRolesAsync(
-            new UpdateMembershipRolesRequest
-            {
-                MembershipId = id,
-                Roles = body.Roles
-            },
+            request with { MembershipId = id },
             cancellationToken);
 
         return NoContent();
     }
 
+    /// <summary>
+    /// Revokes a membership (soft delete).
+    /// </summary>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RevokeMembership(Guid id, CancellationToken cancellationToken)
     {
         await _membershipService.RevokeAsync(
@@ -77,17 +81,5 @@ public sealed class MembershipsController : V1ApiControllerBase
             cancellationToken);
 
         return NoContent();
-    }
-
-    public sealed record CreateMembershipBody
-    {
-        public required Guid UserId { get; init; }
-
-        public required IReadOnlyCollection<string> Roles { get; init; }
-    }
-
-    public sealed record UpdateMembershipRoleBody
-    {
-        public required IReadOnlyCollection<string> Roles { get; init; }
     }
 }

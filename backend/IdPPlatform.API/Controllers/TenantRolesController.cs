@@ -1,94 +1,69 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
+using IdPPlatform.Application.Common;
 using IdPPlatform.Application.Services.TenantRoles;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Authorize]
+/// <summary>
+/// Custom tenant role definitions (RBAC keys within a tenant).
+/// </summary>
 public sealed class TenantRolesController : V1ApiControllerBase
 {
     private readonly ITenantRoleService _tenantRoleService;
 
-    public TenantRolesController(ITenantRoleService tenantRoleService)
+    public TenantRolesController(ITenantRoleService tenantRoleService) => _tenantRoleService = tenantRoleService;
+
+    /// <summary>
+    /// Creates a custom role for the tenant.
+    /// </summary>
+    [HttpPost("/v{version:apiVersion}/tenants/{tenantId:guid}/roles")]
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CreatedIdResponse>> CreateTenantRole(
+        Guid tenantId,
+        [FromBody] CreateTenantRoleRequest request,
+        CancellationToken cancellationToken)
     {
-        _tenantRoleService = tenantRoleService;
+        var id = await _tenantRoleService.CreateAsync(
+            request with { TenantId = tenantId },
+            cancellationToken);
+
+        return Ok(new CreatedIdResponse(id));
     }
 
+    /// <summary>
+    /// Lists roles defined for a tenant.
+    /// </summary>
     [HttpGet("/v{version:apiVersion}/tenants/{tenantId:guid}/roles")]
-    public async Task<IActionResult> ListTenantRoles(
+    [ProducesResponseType(typeof(PagedResult<TenantRoleDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<TenantRoleDto>>> ListTenantRoles(
         Guid tenantId,
-        [FromQuery] bool includeInactive = false,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
+        [FromQuery] ListTenantRolesRequest request,
+        CancellationToken cancellationToken)
     {
         var result = await _tenantRoleService.ListAsync(
-            new ListTenantRolesRequest
-            {
-                TenantId = tenantId,
-                IncludeInactive = includeInactive,
-                Page = page,
-                PageSize = pageSize
-            },
+            request with { TenantId = tenantId },
             cancellationToken);
 
         return Ok(result);
     }
 
-    [HttpPost("/v{version:apiVersion}/tenants/{tenantId:guid}/roles")]
-    public async Task<IActionResult> CreateTenantRole(
-        Guid tenantId,
-        [FromBody] CreateTenantRoleBody body,
-        CancellationToken cancellationToken)
-    {
-        var id = await _tenantRoleService.CreateAsync(
-            new CreateTenantRoleRequest
-            {
-                TenantId = tenantId,
-                Key = body.Key,
-                Name = body.Name,
-                Description = body.Description
-            },
-            cancellationToken);
-
-        return Ok(new { id });
-    }
-
+    /// <summary>
+    /// Updates a tenant role's name, description, or active flag.
+    /// </summary>
     [HttpPatch("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateTenantRole(
         Guid id,
-        [FromBody] UpdateTenantRoleBody body,
+        [FromBody] UpdateTenantRoleRequest request,
         CancellationToken cancellationToken)
     {
         await _tenantRoleService.UpdateAsync(
-            new UpdateTenantRoleRequest
-            {
-                RoleId = id,
-                Name = body.Name,
-                Description = body.Description,
-                IsActive = body.IsActive
-            },
+            request with { RoleId = id },
             cancellationToken);
 
         return NoContent();
-    }
-
-    public sealed record CreateTenantRoleBody
-    {
-        public required string Key { get; init; }
-
-        public required string Name { get; init; }
-
-        public string? Description { get; init; }
-    }
-
-    public sealed record UpdateTenantRoleBody
-    {
-        public required string Name { get; init; }
-
-        public string? Description { get; init; }
-
-        public required bool IsActive { get; init; }
     }
 }

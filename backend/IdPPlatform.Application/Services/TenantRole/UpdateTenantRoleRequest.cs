@@ -2,7 +2,7 @@ namespace IdPPlatform.Application.Services.TenantRoles;
 
 public sealed record UpdateTenantRoleRequest
 {
-    public required Guid RoleId { get; init; }
+    public Guid RoleId { get; init; }
 
     public required string Name { get; init; }
 

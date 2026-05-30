@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models.Oidc;
 using IdPPlatform.Application.Services.Auth;
 using IdPPlatform.Application.Services.LocalAuthentication;
 using IdPPlatform.Application.Services.UnitOfWork;
@@ -16,6 +17,11 @@ using Microsoft.Extensions.Options;
 
 namespace IdPPlatform.API.Controllers;
 
+/// <summary>
+/// Browser-based sign-in and sign-out (form posts from Blazor login UI). Not part of the versioned JSON API.
+/// </summary>
+[ApiExplorerSettings(GroupName = "oidc")]
+[Tags("Account (browser login)")]
 [AllowAnonymous]
 public sealed class AccountController : Controller
 {
@@ -42,73 +48,87 @@ public sealed class AccountController : Controller
         _antiforgery = antiforgery;
     }
 
+    /// <summary>
+    /// Local email/password sign-in; establishes an authentication cookie for the OAuth authorize flow.
+    /// </summary>
+    /// <remarks>
+    /// On failure, redirects to <c>/account/login</c> with an <c>error</c> query code
+    /// (<c>invalid_credentials</c>, <c>missing_fields</c>, <c>session_expired</c>, etc.).
+    /// </remarks>
     [HttpPost("/account/signin")]
     [IgnoreAntiforgeryToken]
+    [Consumes("application/x-www-form-urlencoded")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> Login(
-        [FromForm] string email,
-        [FromForm] string password,
-        [FromForm] string? returnUrl,
+        [FromForm] AccountLoginForm form,
         CancellationToken cancellationToken)
     {
-        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(returnUrl, cancellationToken);
+        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(form.ReturnUrl, cancellationToken);
         if (antiforgeryFailure is not null)
         {
             return antiforgeryFailure;
         }
 
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(form.Email) || string.IsNullOrWhiteSpace(form.Password))
         {
-            return RedirectToLogin(returnUrl, "missing_fields");
+            return RedirectToLogin(form.ReturnUrl, "missing_fields");
         }
 
         var login = await _localAuth.LoginAsync(
-            new LocalLoginRequest { Email = email, Password = password },
+            new LocalLoginRequest { Email = form.Email, Password = form.Password },
             cancellationToken);
 
         if (login is null)
         {
-            return RedirectToLogin(returnUrl, "invalid_credentials");
+            return RedirectToLogin(form.ReturnUrl, "invalid_credentials");
         }
 
-        return await CompleteLoginAsync(login.ToExternalLoginResult(), returnUrl, cancellationToken);
+        return await CompleteLoginAsync(login.ToExternalLoginResult(), form.ReturnUrl, cancellationToken);
     }
 
+    /// <summary>
+    /// Federated sign-in (e.g. Firebase id_token); establishes an authentication cookie.
+    /// </summary>
     [HttpPost("/account/external-signin")]
     [IgnoreAntiforgeryToken]
+    [Consumes("application/x-www-form-urlencoded")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> ExternalLogin(
-        [FromForm] string providerAlias,
-        [FromForm] string idToken,
-        [FromForm] string? returnUrl,
+        [FromForm] AccountExternalLoginForm form,
         CancellationToken cancellationToken)
     {
-        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(returnUrl, cancellationToken);
+        var antiforgeryFailure = await TryRedirectOnAntiforgeryFailureAsync(form.ReturnUrl, cancellationToken);
         if (antiforgeryFailure is not null)
         {
             return antiforgeryFailure;
         }
 
-        if (string.IsNullOrWhiteSpace(providerAlias) || string.IsNullOrWhiteSpace(idToken))
+        if (string.IsNullOrWhiteSpace(form.ProviderAlias) || string.IsNullOrWhiteSpace(form.IdToken))
         {
-            return RedirectToLogin(returnUrl, "invalid_provider");
+            return RedirectToLogin(form.ReturnUrl, "invalid_provider");
         }
 
         try
         {
-            var login = await _externalLogin.LoginWithProviderAsync(providerAlias, idToken, cancellationToken);
-            return await CompleteLoginAsync(login, returnUrl, cancellationToken);
+            var login = await _externalLogin.LoginWithProviderAsync(form.ProviderAlias, form.IdToken, cancellationToken);
+            return await CompleteLoginAsync(login, form.ReturnUrl, cancellationToken);
         }
         catch (Exception ex) when (ex is Domain.Exceptions.DomainBusinessRuleException
             or Domain.Exceptions.DomainNotFoundException
             or Application.Exceptions.UnauthorizedApplicationException
             or Domain.Exceptions.DomainValidationException)
         {
-            return RedirectToLogin(returnUrl, "invalid_provider");
+            return RedirectToLogin(form.ReturnUrl, "invalid_provider");
         }
     }
 
+    /// <summary>
+    /// Signs out the browser session cookie.
+    /// </summary>
     [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
     [HttpPost("/account/logout")]
     [IgnoreAntiforgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         if (!await _antiforgery.IsRequestValidAsync(HttpContext))
@@ -120,9 +140,7 @@ public sealed class AccountController : Controller
         return Redirect("/");
     }
 
-    private async Task<IActionResult?> TryRedirectOnAntiforgeryFailureAsync(
-        string? returnUrl,
-        CancellationToken cancellationToken)
+    private async Task<IActionResult?> TryRedirectOnAntiforgeryFailureAsync(string? returnUrl, CancellationToken cancellationToken)
     {
         if (await _antiforgery.IsRequestValidAsync(HttpContext))
         {
@@ -176,8 +194,7 @@ public sealed class AccountController : Controller
             new("idp_login", JsonSerializer.Serialize(context))
         };
 
-        var principal = new ClaimsPrincipal(
-            new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
 
         var redirectTarget = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
 

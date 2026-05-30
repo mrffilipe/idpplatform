@@ -6,7 +6,7 @@ public sealed record CreateTenantRequest
 
     public required string Key { get; init; }
 
-    public required Guid ActorUserId { get; init; }
+    public Guid ActorUserId { get; init; }
 
     public Guid? InitialAdministratorUserId { get; init; }
 }

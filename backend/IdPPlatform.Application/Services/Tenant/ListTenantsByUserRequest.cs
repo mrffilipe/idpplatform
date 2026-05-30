@@ -4,5 +4,5 @@ namespace IdPPlatform.Application.Services.Tenant;
 
 public sealed record ListTenantsByUserRequest : PagedRequest
 {
-    public required Guid UserId { get; init; }
+    public Guid UserId { get; init; }
 }

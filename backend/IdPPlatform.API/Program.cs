@@ -4,17 +4,19 @@ using System.Threading.RateLimiting;
 using Asp.Versioning;
 using IdPPlatform.API.Components;
 using IdPPlatform.API.Middlewares;
+using IdPPlatform.API.Services;
+using IdPPlatform.API.Swagger;
 using IdPPlatform.Domain.Constants;
 using IdPPlatform.Infrastructure.Configurations;
 using IdPPlatform.Infrastructure.Extensions;
 using IdPPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Http;
 using TenancyKit.AspNetCore;
 using TenancyKit.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- MVC / JSON API ---
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
@@ -24,11 +26,14 @@ builder.Services
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
-// Blazor Web App with Static Server Rendering. Used by /account/login and /account/register
-// to render modern UI server-side; same security profile as the previous MVC Razor pages.
+builder.Services.AddApiDocumentation();
+
+// --- Blazor account UI (SSR) ---
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddRazorComponents();
+builder.Services.AddSingleton<IFederatedConfigBuilder, FederatedConfigBuilder>();
 
+// --- API versioning ---
 builder.Services
     .AddApiVersioning(options =>
     {
@@ -38,14 +43,17 @@ builder.Services
         options.ApiVersionReader = new UrlSegmentApiVersionReader();
     });
 
+// --- Domain infrastructure (EF, services, auth) ---
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPlatformOidc(builder.Configuration);
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("PlatformAdministrator", policy =>
         policy.RequireClaim(PlatformRoleDefaults.ClaimType, PlatformRoleDefaults.PlatformAdministrator));
 });
 
+// --- Rate limiting ---
 builder.Services.AddRateLimiter(options =>
 {
     var rateLimitOptions = builder.Configuration.GetSection(RateLimitOptions.Section).Get<RateLimitOptions>()
@@ -72,6 +80,7 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// --- Multi-tenancy ---
 builder.Services
     .AddTenancyKit<TenantInfoAdapter>(options =>
     {
@@ -80,14 +89,16 @@ builder.Services
         options.UseStore<TenantStore>();
     });
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+// --- CORS ---
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    options.AddPolicy("AllowAll", policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyHeader()
+    .AllowAnyMethod());
 });
 
+// --- Reverse proxy / forwarded headers ---
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
@@ -97,6 +108,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
+// --- Antiforgery (Blazor forms + account POST) ---
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
@@ -105,15 +117,18 @@ builder.Services.AddAntiforgery(options =>
 
 var app = builder.Build();
 
-// Must run before other middleware so HTTPS/host behind nginx are correct (cookies, redirects).
+// --- Middleware pipeline ---
 app.UseForwardedHeaders();
-
 app.UseMiddleware<ApplicationExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "REST API v1");
+        options.SwaggerEndpoint("/swagger/oidc/swagger.json", "OAuth / OIDC / Account");
+    });
 }
 
 app.UseCors("AllowAll");
@@ -121,7 +136,6 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMultiTenancy<TenantInfoAdapter>();
 app.UseAuthorization();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
 

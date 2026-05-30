@@ -4,8 +4,6 @@ using IdPPlatform.API.Common;
 using IdPPlatform.Application.Exceptions;
 using IdPPlatform.Domain.Exceptions;
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Middlewares;
@@ -13,10 +11,12 @@ namespace IdPPlatform.API.Middlewares;
 public sealed class ApplicationExceptionMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<ApplicationExceptionMiddleware> _logger;
 
-    public ApplicationExceptionMiddleware(RequestDelegate next)
+    public ApplicationExceptionMiddleware(RequestDelegate next, ILogger<ApplicationExceptionMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -27,6 +27,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (UnauthorizedApplicationException ex)
         {
+            _logger.LogWarning(ex, "Unauthorized request to {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.Unauthorized,
@@ -35,6 +36,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (ForbiddenApplicationException ex)
         {
+            _logger.LogWarning(ex, "Forbidden request to {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.Forbidden,
@@ -43,6 +45,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (DomainValidationException ex)
         {
+            _logger.LogInformation(ex, "Validation failed for {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.BadRequest,
@@ -51,6 +54,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (InvalidClientException ex)
         {
+            _logger.LogWarning(ex, "Invalid OAuth client for {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.Unauthorized,
@@ -59,6 +63,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (DomainBusinessRuleException ex)
         {
+            _logger.LogInformation(ex, "Business rule conflict for {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.Conflict,
@@ -67,14 +72,16 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (DomainNotFoundException ex)
         {
+            _logger.LogInformation(ex, "Resource not found for {Path}", context.Request.Path);
             await WriteProblemAsync(
                 context,
                 HttpStatusCode.NotFound,
                 ApiErrorMessages.NotFoundTitle,
                 ex.Message);
         }
-        catch (AntiforgeryValidationException)
+        catch (AntiforgeryValidationException ex)
         {
+            _logger.LogWarning(ex, "Antiforgery validation failed for {Path}", context.Request.Path);
             if (await TryRedirectAccountLoginAsync(context, "session_expired").ConfigureAwait(false))
             {
                 return;
@@ -88,6 +95,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (BadHttpRequestException ex) when (IsAntiforgeryFailure(ex))
         {
+            _logger.LogWarning(ex, "Antiforgery request failure for {Path}", context.Request.Path);
             if (await TryRedirectAccountLoginAsync(context, "session_expired").ConfigureAwait(false))
             {
                 return;
@@ -101,6 +109,7 @@ public sealed class ApplicationExceptionMiddleware
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
             var isDevelopment = context.RequestServices.GetService<IHostEnvironment>()?.IsDevelopment() == true;
             var detail = isDevelopment
                 ? FormatDevelopmentExceptionDetail(ex)

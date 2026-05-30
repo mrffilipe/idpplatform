@@ -1,12 +1,14 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.Application.Common;
 using IdPPlatform.Application.Services.Users;
 using IdPPlatform.Application.Services.UserScope;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Authorize]
+/// <summary>
+/// Current user profile and membership listing.
+/// </summary>
 public sealed class UsersController : V1ApiControllerBase
 {
     private readonly IUserScope _userScope;
@@ -18,7 +20,12 @@ public sealed class UsersController : V1ApiControllerBase
         _userService = userService;
     }
 
+    /// <summary>
+    /// Returns the authenticated user's profile.
+    /// </summary>
     [HttpGet("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetMe(CancellationToken cancellationToken)
     {
         var user = await _userService.GetByIdAsync(
@@ -28,43 +35,35 @@ public sealed class UsersController : V1ApiControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
-    [HttpPatch("me")]
-    public async Task<IActionResult> UpdateMe([FromBody] UpdateMeBody body, CancellationToken cancellationToken)
-    {
-        await _userService.UpdateProfileAsync(
-            new UpdateUserProfileRequest
-            {
-                UserId = _userScope.UserId,
-                DisplayName = body.DisplayName,
-                PhotoUrl = body.PhotoUrl
-            },
-            cancellationToken);
-
-        return NoContent();
-    }
-
+    /// <summary>
+    /// Lists tenants and roles for the authenticated user.
+    /// </summary>
     [HttpGet("me/memberships")]
-    public async Task<IActionResult> ListUserMemberships(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(PagedResult<UserMembershipDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserMembershipDto>>> ListUserMemberships(
+        [FromQuery] ListUserMembershipsRequest request,
+        CancellationToken cancellationToken)
     {
         var result = await _userService.ListMembershipsAsync(
-            new ListUserMembershipsRequest
-            {
-                UserId = _userScope.UserId,
-                Page = page,
-                PageSize = pageSize
-            },
+            request with { UserId = _userScope.UserId },
             cancellationToken);
 
         return Ok(result);
     }
 
-    public sealed record UpdateMeBody
+    /// <summary>
+    /// Updates the authenticated user's display name and photo URL.
+    /// </summary>
+    [HttpPatch("me")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateMe(
+        [FromBody] UpdateUserProfileRequest request,
+        CancellationToken cancellationToken)
     {
-        public required string DisplayName { get; init; }
+        await _userService.UpdateProfileAsync(
+            request with { UserId = _userScope.UserId },
+            cancellationToken);
 
-        public string? PhotoUrl { get; init; }
+        return NoContent();
     }
 }

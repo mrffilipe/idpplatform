@@ -5,18 +5,28 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
+/// <summary>
+/// OpenID Provider metadata and JSON Web Key Set (public, unversioned).
+/// </summary>
 [ApiController]
+[ApiExplorerSettings(GroupName = "oidc")]
+[Tags("OpenID Connect Discovery")]
 [AllowAnonymous]
+[Produces("application/json")]
 public sealed class WellKnownController : ControllerBase
 {
     private readonly IJwtSigningService _signing;
 
-    public WellKnownController(IJwtSigningService signing)
-    {
-        _signing = signing;
-    }
+    public WellKnownController(IJwtSigningService signing) => _signing = signing;
 
+    /// <summary>
+    /// OpenID Connect discovery document (issuer, endpoints, supported algorithms).
+    /// </summary>
+    /// <remarks>
+    /// Field names follow the OpenID Provider Metadata specification (snake_case).
+    /// </remarks>
     [HttpGet("/.well-known/openid-configuration")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult GetOpenIdConfiguration()
     {
         var issuer = _signing.Issuer;
@@ -46,9 +56,10 @@ public sealed class WellKnownController : ControllerBase
         return Content(JsonSerializer.Serialize(document), "application/json");
     }
 
+    /// <summary>
+    /// JSON Web Key Set used to validate tokens issued by this platform.
+    /// </summary>
     [HttpGet("/.well-known/jwks.json")]
-    public IActionResult GetJwksJson()
-    {
-        return Content(_signing.GetJwksJson(), "application/json");
-    }
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetJwksJson() => Content(_signing.GetJwksJson(), "application/json");
 }

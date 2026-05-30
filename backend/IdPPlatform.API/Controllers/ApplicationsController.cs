@@ -1,13 +1,16 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
+using IdPPlatform.Application.Common;
 using IdPPlatform.Application.Services.AppService;
 using IdPPlatform.Application.Services.UserScope;
-using IdPPlatform.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Authorize]
+/// <summary>
+/// Manages SaaS applications, OAuth clients, and tenant provisioning for an application.
+/// </summary>
 public sealed class ApplicationsController : V1ApiControllerBase
 {
     private readonly IUserScope _userScope;
@@ -19,86 +22,58 @@ public sealed class ApplicationsController : V1ApiControllerBase
         _applicationService = applicationService;
     }
 
+    /// <summary>
+    /// Registers a new application (platform administrators only).
+    /// </summary>
     [Authorize(Policy = "PlatformAdministrator")]
     [HttpPost]
-    public async Task<IActionResult> CreateApplication(
-        [FromBody] CreateApplicationBody body,
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreatedIdResponse>> CreateApplication(
+        [FromBody] CreateApplicationRequest request,
         CancellationToken cancellationToken)
     {
-        var id = await _applicationService.CreateAsync(
-            new CreateApplicationRequest
-            {
-                Name = body.Name,
-                Slug = body.Slug,
-                Type = body.Type
-            },
-            cancellationToken);
-
-        return CreatedAtAction(nameof(GetApplicationById), new { id, version = "1.0" }, new { id });
+        var id = await _applicationService.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetApplicationById), new { id, version = "1.0" }, new CreatedIdResponse(id));
     }
 
-    [HttpGet]
-    public async Task<IActionResult> ListApplications(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _applicationService.ListAsync(
-            new ListApplicationsRequest { Page = page, PageSize = pageSize },
-            cancellationToken);
-
-        return Ok(result);
-    }
-
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetApplicationById(Guid id, CancellationToken cancellationToken)
-    {
-        var result = await _applicationService.GetByIdAsync(
-            new GetApplicationByIdRequest { ApplicationId = id },
-            cancellationToken);
-
-        return result is null ? NotFound() : Ok(result);
-    }
-
+    /// <summary>
+    /// Creates an OAuth/OIDC client for the given application.
+    /// </summary>
     [HttpPost("{applicationId:guid}/clients")]
-    public async Task<IActionResult> CreateApplicationClient(
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CreatedIdResponse>> CreateApplicationClient(
         Guid applicationId,
-        [FromBody] CreateApplicationClientBody body,
+        [FromBody] CreateApplicationClientRequest request,
         CancellationToken cancellationToken)
     {
         var id = await _applicationService.CreateClientAsync(
-            new CreateApplicationClientRequest
+            request with
             {
                 ApplicationId = applicationId,
-                ClientId = body.ClientId,
-                ClientSecretHash = body.ClientSecretHash,
-                ClientType = body.ClientType,
-                RedirectUris = body.RedirectUris,
-                AllowedScopes = body.AllowedScopes,
-                AccessTokenTtlSeconds = body.AccessTokenTtlSeconds,
                 ActorPlatformRoles = _userScope.PlatformRoles
             },
             cancellationToken);
 
-        return Ok(new { id });
+        return Ok(new CreatedIdResponse(id));
     }
 
+    /// <summary>
+    /// Provisions a tenant linked to an application (platform administrators only).
+    /// </summary>
     [Authorize(Policy = "PlatformAdministrator")]
     [HttpPost("{applicationId:guid}/tenants/provision")]
-    public async Task<IActionResult> ProvisionTenant(
+    [ProducesResponseType(typeof(ProvisionApplicationTenantResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProvisionApplicationTenantResult>> ProvisionTenant(
         Guid applicationId,
-        [FromBody] ProvisionApplicationTenantBody body,
+        [FromBody] ProvisionApplicationTenantRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _applicationService.ProvisionTenantAsync(
-            new ProvisionApplicationTenantRequest
+            request with
             {
                 ApplicationId = applicationId,
-                TenantName = body.TenantName,
-                TenantKey = body.TenantKey,
-                InitialAdministratorUserId = body.InitialAdministratorUserId,
-                ExternalCustomerId = body.ExternalCustomerId,
-                PlanCode = body.PlanCode,
                 ActorUserId = _userScope.UserId,
                 ActorPlatformRoles = _userScope.PlatformRoles
             },
@@ -107,40 +82,31 @@ public sealed class ApplicationsController : V1ApiControllerBase
         return Ok(result);
     }
 
-    public sealed record CreateApplicationBody
+    /// <summary>
+    /// Lists applications with pagination.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<ApplicationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<ApplicationDto>>> ListApplications(
+        [FromQuery] ListApplicationsRequest request,
+        CancellationToken cancellationToken)
     {
-        public required string Name { get; init; }
-
-        public required string Slug { get; init; }
-
-        public required ApplicationType Type { get; init; }
+        var result = await _applicationService.ListAsync(request, cancellationToken);
+        return Ok(result);
     }
 
-    public sealed record CreateApplicationClientBody
+    /// <summary>
+    /// Returns a single application by identifier.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ApplicationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApplicationDto>> GetApplicationById(Guid id, CancellationToken cancellationToken)
     {
-        public required string ClientId { get; init; }
+        var result = await _applicationService.GetByIdAsync(
+            new GetApplicationByIdRequest { ApplicationId = id },
+            cancellationToken);
 
-        public string? ClientSecretHash { get; init; }
-
-        public required ClientType ClientType { get; init; }
-
-        public required string RedirectUris { get; init; }
-
-        public required string AllowedScopes { get; init; }
-
-        public required int AccessTokenTtlSeconds { get; init; }
-    }
-
-    public sealed record ProvisionApplicationTenantBody
-    {
-        public required string TenantName { get; init; }
-
-        public required string TenantKey { get; init; }
-
-        public Guid? InitialAdministratorUserId { get; init; }
-
-        public string? ExternalCustomerId { get; init; }
-
-        public string? PlanCode { get; init; }
+        return result is null ? NotFound() : Ok(result);
     }
 }

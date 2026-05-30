@@ -1,19 +1,22 @@
 using System.Security.Claims;
 using System.Text.Json;
 using IdPPlatform.API.Common;
-using IdPPlatform.Application.Exceptions;
+using IdPPlatform.API.Models.Oidc;
 using IdPPlatform.Application.Services.Oidc;
 using IdPPlatform.Application.Services.UnitOfWork;
 using IdPPlatform.Domain.Enums;
 using IdPPlatform.Domain.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
+/// <summary>
+/// OAuth 2.0 authorization server and OpenID Connect provider endpoints under /connect.
+/// </summary>
+[ApiExplorerSettings(GroupName = "oidc")]
+[Tags("OAuth 2.0 / OpenID Connect")]
 public sealed class AuthorizationController : Controller
 {
     private readonly IAuthSessionRepository _sessions;
@@ -39,9 +42,19 @@ public sealed class AuthorizationController : Controller
         _claimsService = claimsService;
     }
 
+    /// <summary>
+    /// OAuth 2.0 authorization endpoint (authorization code + PKCE).
+    /// </summary>
+    /// <remarks>
+    /// Accepts the same parameters via query string (GET) or form body (POST). On success, redirects to
+    /// <c>redirect_uri</c> with <c>code</c> and <c>state</c>. On failure, redirects with <c>error</c> and
+    /// <c>error_description</c>, or returns a JSON error when <c>redirect_uri</c> is invalid.
+    /// </remarks>
     [HttpGet("~/connect/authorize")]
     [HttpPost("~/connect/authorize")]
     [IgnoreAntiforgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(typeof(OidcErrorJsonResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Authorize(CancellationToken cancellationToken)
     {
         var request = ReadAuthorizeRequest();
@@ -146,22 +159,29 @@ public sealed class AuthorizationController : Controller
         return Redirect($"{request.RedirectUri}{redirect}");
     }
 
+    /// <summary>
+    /// OAuth 2.0 token endpoint (authorization_code and refresh_token grants).
+    /// </summary>
     [HttpPost("~/connect/token")]
     [IgnoreAntiforgeryToken]
+    [Consumes("application/x-www-form-urlencoded")]
     [Produces("application/json")]
-    public async Task<IActionResult> Exchange(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(OidcTokenResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OidcErrorJsonResponse), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<OidcTokenResponse>> Exchange(
+        [FromForm] OidcTokenFormRequest form,
+        CancellationToken cancellationToken)
     {
-        var form = await Request.ReadFormAsync(cancellationToken);
         var request = new OidcTokenRequest
         {
-            GrantType = form["grant_type"].ToString(),
-            Code = form["code"].ToString(),
-            RedirectUri = form["redirect_uri"].ToString(),
-            ClientId = form["client_id"].ToString(),
-            ClientSecret = form["client_secret"].ToString(),
-            CodeVerifier = form["code_verifier"].ToString(),
-            RefreshToken = form["refresh_token"].ToString(),
-            Scope = form["scope"].ToString()
+            GrantType = form.GrantType,
+            Code = form.Code,
+            RedirectUri = form.RedirectUri,
+            ClientId = form.ClientId,
+            ClientSecret = form.ClientSecret,
+            CodeVerifier = form.CodeVerifier,
+            RefreshToken = form.RefreshToken,
+            Scope = form.Scope
         };
 
         var (response, error) = await _tokenService.ExchangeAsync(request, cancellationToken);
@@ -173,32 +193,40 @@ public sealed class AuthorizationController : Controller
         return Ok(response);
     }
 
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    /// <summary>
+    /// OpenID Connect UserInfo endpoint (requires Bearer access token).
+    /// </summary>
     [HttpGet("~/connect/userinfo")]
     [HttpPost("~/connect/userinfo")]
     [Produces("application/json")]
-    public IActionResult Userinfo()
+    [ProducesResponseType(typeof(OidcUserInfoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public ActionResult<OidcUserInfoResponse> Userinfo()
     {
-        return Ok(new
+        return Ok(new OidcUserInfoResponse
         {
-            sub = User.FindFirst(OidcConstants.Claims.Subject)?.Value,
-            email = User.FindFirst(OidcConstants.Claims.Email)?.Value,
-            name = User.FindFirst(OidcConstants.Claims.Name)?.Value,
-            tid = User.FindFirst("tid")?.Value,
-            mid = User.FindFirst("mid")?.Value,
-            trole = User.FindAll("trole").Select(c => c.Value).ToArray(),
-            prole = User.FindFirst("prole")?.Value
+            Sub = User.FindFirst(OidcConstants.Claims.Subject)?.Value,
+            Email = User.FindFirst(OidcConstants.Claims.Email)?.Value,
+            Name = User.FindFirst(OidcConstants.Claims.Name)?.Value,
+            Tid = User.FindFirst("tid")?.Value,
+            Mid = User.FindFirst("mid")?.Value,
+            Trole = User.FindAll("trole").Select(c => c.Value).ToArray(),
+            Prole = User.FindFirst("prole")?.Value
         });
     }
 
+    /// <summary>
+    /// Ends the browser session (cookie) and optionally redirects to the client post-logout URI.
+    /// </summary>
     [HttpGet("~/connect/logout")]
     [HttpPost("~/connect/logout")]
-    public async Task<IActionResult> Logout([FromQuery] string? post_logout_redirect_uri)
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    public async Task<IActionResult> Logout([FromQuery(Name = "post_logout_redirect_uri")] string? postLogoutRedirectUri)
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!string.IsNullOrWhiteSpace(post_logout_redirect_uri))
+        if (!string.IsNullOrWhiteSpace(postLogoutRedirectUri))
         {
-            return Redirect(post_logout_redirect_uri);
+            return Redirect(postLogoutRedirectUri);
         }
 
         return Redirect("/");
@@ -265,8 +293,10 @@ public sealed class AuthorizationController : Controller
         return Redirect($"{redirectUri}{query}");
     }
 
-    private IActionResult OAuthJsonError(OidcError error)
-    {
-        return BadRequest(new { error = error.Error, error_description = error.ErrorDescription });
-    }
+    private ActionResult OAuthJsonError(OidcError error) =>
+        BadRequest(new OidcErrorJsonResponse
+        {
+            Error = error.Error,
+            ErrorDescription = error.ErrorDescription
+        });
 }

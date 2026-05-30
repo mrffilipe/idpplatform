@@ -1,11 +1,13 @@
 @page "/account/login"
 @using IdPPlatform.API.Common
+@using IdPPlatform.API.Services
 @using IdPPlatform.Application.Services.IdentityProvider
 @using IdPPlatform.Domain.Enums
 @using IdPPlatform.Domain.Repositories
 @using Microsoft.AspNetCore.Antiforgery
 @inject IIdentityProviderRepository IdentityProviders
 @inject IIdentityProviderConfigCipher ConfigCipher
+@inject IFederatedConfigBuilder FederatedConfigBuilder
 @inject IAntiforgery Antiforgery
 @inject IHttpContextAccessor HttpContextAccessor
 
@@ -216,7 +218,7 @@
                 Alias = p.Alias,
                 DisplayName = p.DisplayName,
                 ProviderType = p.ProviderType.ToString(),
-                ClientConfig = FederatedProviderClientConfig.Build(p.ProviderType, ConfigCipher.Decrypt(p.ConfigJson))
+                ClientConfig = FederatedConfigBuilder.Build(p.ProviderType, ConfigCipher.Decrypt(p.ConfigJson))
             })
             .ToList();
 

@@ -1,15 +1,15 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
 using IdPPlatform.Application.Services.Auth;
 using IdPPlatform.Application.Services.Oidc;
 using IdPPlatform.Application.Services.UserScope;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Route("v{version:apiVersion}/auth")]
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+/// <summary>
+/// Authenticated tenant context: subscribe, switch tenant, and session management.
+/// </summary>
 public sealed class AuthController : V1ApiControllerBase
 {
     private readonly IAuthService _authService;
@@ -26,96 +26,78 @@ public sealed class AuthController : V1ApiControllerBase
         _userScope = userScope;
     }
 
-    [Authorize]
+    /// <summary>
+    /// Creates a tenant for the current OAuth application session (SaaS onboarding).
+    /// </summary>
+    /// <remarks>
+    /// When the caller has an active auth session, freshly issued OAuth tokens may be included under <c>tokens</c>
+    /// using RFC 6749 field names (<c>access_token</c>, <c>refresh_token</c>, etc.).
+    /// </remarks>
     [HttpPost("subscribe")]
-    public async Task<IActionResult> SubscribeTenant(
-        [FromBody] SubscribeTenantBody body,
+    [ProducesResponseType(typeof(SubscribeTenantResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<SubscribeTenantResponse>> SubscribeTenant(
+        [FromBody] SubscribeTenantRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _authService.SubscribeTenantAsync(
-            new SubscribeTenantRequest
-            {
-                TenantName = body.TenantName,
-                TenantKey = body.TenantKey,
-                PlanCode = body.PlanCode,
-                ExternalCustomerId = body.ExternalCustomerId
-            },
-            cancellationToken);
+        var result = await _authService.SubscribeTenantAsync(request, cancellationToken);
 
-        object? tokens = null;
+        OidcTokenResponse? tokens = null;
         if (_userScope.SessionId.HasValue)
         {
-            var (tokenResponse, tokenError) = await _tokenService.IssueForSessionAsync(
-                _userScope.SessionId.Value,
-                cancellationToken);
+            var (tokenResponse, tokenError) = await _tokenService.IssueForSessionAsync(_userScope.SessionId.Value, cancellationToken);
             if (tokenError is null && tokenResponse is not null)
             {
-                tokens = new
-                {
-                    access_token = tokenResponse.AccessToken,
-                    refresh_token = tokenResponse.RefreshToken,
-                    expires_in = tokenResponse.ExpiresIn,
-                    token_type = tokenResponse.TokenType,
-                    id_token = tokenResponse.IdToken,
-                    scope = tokenResponse.Scope
-                };
+                tokens = tokenResponse;
             }
         }
 
-        return Ok(new
+        return Ok(new SubscribeTenantResponse
         {
-            result.UserId,
-            result.Email,
-            result.TenantId,
-            result.MembershipId,
-            result.TenantRoles,
-            result.PlatformRoles,
-            result.Tenants,
-            tokens
+            UserId = result.UserId,
+            Email = result.Email,
+            TenantId = result.TenantId,
+            MembershipId = result.MembershipId,
+            TenantRoles = result.TenantRoles,
+            PlatformRoles = result.PlatformRoles,
+            Tenants = result.Tenants,
+            Tokens = tokens
         });
     }
 
-    [Authorize]
+    /// <summary>
+    /// Switches the active tenant for the current user session.
+    /// </summary>
     [HttpPost("switch-tenant")]
-    public async Task<IActionResult> SwitchTenant(
-        [FromBody] SwitchTenantBody body,
+    [ProducesResponseType(typeof(TenantContextResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TenantContextResult>> SwitchTenant(
+        [FromBody] SwitchTenantRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _authService.SwitchTenantAsync(
-            new SwitchTenantRequest { TenantId = body.TenantId },
-            cancellationToken);
+        var result = await _authService.SwitchTenantAsync(request, cancellationToken);
         return Ok(result);
     }
 
-    [Authorize]
+    /// <summary>
+    /// Lists active authentication sessions for the current user.
+    /// </summary>
     [HttpGet("sessions")]
-    public async Task<IActionResult> ListActiveSessions(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(IReadOnlyList<AuthSessionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AuthSessionDto>>> ListActiveSessions(CancellationToken cancellationToken)
     {
         var result = await _authService.ListActiveSessionsAsync(_userScope.UserId, cancellationToken);
         return Ok(result);
     }
 
-    [Authorize]
+    /// <summary>
+    /// Revokes a single authentication session.
+    /// </summary>
     [HttpDelete("sessions/{sessionId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RevokeSession(Guid sessionId, CancellationToken cancellationToken)
     {
         await _authService.RevokeSessionAsync(_userScope.UserId, sessionId, cancellationToken);
         return NoContent();
-    }
-
-    public sealed record SubscribeTenantBody
-    {
-        public required string TenantName { get; init; }
-
-        public required string TenantKey { get; init; }
-
-        public string? PlanCode { get; init; }
-
-        public string? ExternalCustomerId { get; init; }
-    }
-
-    public sealed record SwitchTenantBody
-    {
-        public required Guid TenantId { get; init; }
     }
 }

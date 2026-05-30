@@ -2,7 +2,7 @@ namespace IdPPlatform.Application.Services.AppService;
 
 public sealed record ProvisionApplicationTenantRequest
 {
-    public required Guid ApplicationId { get; init; }
+    public Guid ApplicationId { get; init; }
 
     public required string TenantName { get; init; }
 
@@ -14,7 +14,7 @@ public sealed record ProvisionApplicationTenantRequest
 
     public string? PlanCode { get; init; }
 
-    public required Guid ActorUserId { get; init; }
+    public Guid ActorUserId { get; init; }
 
-    public required IReadOnlyList<string> ActorPlatformRoles { get; init; }
+    public IReadOnlyList<string> ActorPlatformRoles { get; init; } = [];
 }

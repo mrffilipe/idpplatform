@@ -347,7 +347,9 @@ IdPPlatform.API/
 │   ├── Layout/              AccountLayout (split-screen with hero)
 │   └── Pages/Account/       Login.razor, Register.razor
 ├── Controllers/         API controllers (Account POST handlers, Authorization, WellKnown, v1 REST)
-├── Common/              Base controllers, middlewares, OidcLoginContext, FederatedProviderClientConfig
+├── Common/              Base controllers, middlewares, OidcLoginContext
+├── Services/            API-only services (e.g. IFederatedConfigBuilder for login UI)
+├── Swagger/             OpenAPI filters and registration
 ├── wwwroot/css/         Modern, theme-aware account.css (no framework, no build step)
 ├── appsettings.json     Configuration template
 └── Program.cs           Startup (DI, OIDC, policies, rate limiting, Razor components)

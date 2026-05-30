@@ -4,7 +4,7 @@ namespace IdPPlatform.Application.Services.AppService;
 
 public sealed record CreateApplicationClientRequest
 {
-    public required Guid ApplicationId { get; init; }
+    public Guid ApplicationId { get; init; }
 
     public required string ClientId { get; init; }
 
@@ -18,5 +18,5 @@ public sealed record CreateApplicationClientRequest
 
     public required int AccessTokenTtlSeconds { get; init; }
 
-    public required IReadOnlyList<string> ActorPlatformRoles { get; init; }
+    public IReadOnlyList<string> ActorPlatformRoles { get; init; } = [];
 }

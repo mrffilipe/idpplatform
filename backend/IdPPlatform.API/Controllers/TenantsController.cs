@@ -1,4 +1,6 @@
 using IdPPlatform.API.Common;
+using IdPPlatform.API.Models;
+using IdPPlatform.Application.Common;
 using IdPPlatform.Application.Services.Tenant;
 using IdPPlatform.Application.Services.UserScope;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace IdPPlatform.API.Controllers;
 
-[Authorize]
+/// <summary>
+/// Tenant lifecycle, invites, and membership onboarding.
+/// </summary>
 public sealed class TenantsController : V1ApiControllerBase
 {
     private readonly IUserScope _userScope;
@@ -18,43 +22,87 @@ public sealed class TenantsController : V1ApiControllerBase
         _tenantService = tenantService;
     }
 
+    /// <summary>
+    /// Creates a new tenant (platform administrators only).
+    /// </summary>
     [Authorize(Policy = "PlatformAdministrator")]
     [HttpPost]
-    public async Task<IActionResult> CreateTenant([FromBody] CreateTenantBody body, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status201Created)]
+    public async Task<ActionResult<CreatedIdResponse>> CreateTenant(
+        [FromBody] CreateTenantRequest request,
+        CancellationToken cancellationToken)
     {
         var id = await _tenantService.CreateAsync(
-            new CreateTenantRequest
+            request with { ActorUserId = _userScope.UserId },
+            cancellationToken);
+
+        return CreatedAtAction(nameof(GetTenantById), new { id, version = "1.0" }, new CreatedIdResponse(id));
+    }
+
+    /// <summary>
+    /// Sends an invitation to join the tenant.
+    /// </summary>
+    [HttpPost("{id:guid}/invites")]
+    [ProducesResponseType(typeof(CreatedIdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CreatedIdResponse>> InviteMember(
+        Guid id,
+        [FromBody] InviteMemberRequest request,
+        CancellationToken cancellationToken)
+    {
+        var inviteId = await _tenantService.InviteMemberAsync(
+            request with
             {
-                Name = body.Name,
-                Key = body.Key,
+                TenantId = id,
+                InvitedByUserId = _userScope.UserId,
                 ActorUserId = _userScope.UserId,
-                InitialAdministratorUserId = body.InitialAdministratorUserId
+                ActorPlatformRoles = _userScope.PlatformRoles
             },
             cancellationToken);
 
-        return CreatedAtAction(nameof(GetTenantById), new { id, version = "1.0" }, new { id });
+        return Ok(new CreatedIdResponse(inviteId));
     }
 
+    /// <summary>
+    /// Accepts a tenant invite using the token from the invitation email.
+    /// </summary>
+    [HttpPost("/v{version:apiVersion}/invites/accept")]
+    [ProducesResponseType(typeof(CreatedMembershipIdResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CreatedMembershipIdResponse>> AcceptInvite(
+        [FromBody] AcceptInviteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var membershipId = await _tenantService.AcceptInviteAsync(
+            request with { ActorUserId = _userScope.UserId },
+            cancellationToken);
+
+        return Ok(new CreatedMembershipIdResponse(membershipId));
+    }
+
+    /// <summary>
+    /// Lists tenants the current user belongs to.
+    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> ListTenantsByUser(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(PagedResult<TenantDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<TenantDto>>> ListTenantsByUser(
+        [FromQuery] ListTenantsByUserRequest request,
+        CancellationToken cancellationToken)
     {
         var result = await _tenantService.ListByUserAsync(
-            new ListTenantsByUserRequest
-            {
-                UserId = _userScope.UserId,
-                Page = page,
-                PageSize = pageSize
-            },
+            request with { UserId = _userScope.UserId },
             cancellationToken);
 
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns a tenant by identifier when the caller has access.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetTenantById(Guid id, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TenantDto>> GetTenantById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _tenantService.GetByIdAsync(
             new GetTenantByIdRequest
@@ -68,83 +116,26 @@ public sealed class TenantsController : V1ApiControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    /// <summary>
+    /// Updates tenant metadata (name).
+    /// </summary>
     [HttpPatch("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateTenant(
         Guid id,
-        [FromBody] UpdateTenantBody body,
+        [FromBody] UpdateTenantRequest request,
         CancellationToken cancellationToken)
     {
         await _tenantService.UpdateAsync(
-            new UpdateTenantRequest
+            request with
             {
                 TenantId = id,
-                Name = body.Name,
                 ActorUserId = _userScope.UserId,
                 ActorPlatformRoles = _userScope.PlatformRoles
             },
             cancellationToken);
 
         return NoContent();
-    }
-
-    [HttpPost("{id:guid}/invites")]
-    public async Task<IActionResult> InviteMember(
-        Guid id,
-        [FromBody] InviteMemberBody body,
-        CancellationToken cancellationToken)
-    {
-        var inviteId = await _tenantService.InviteMemberAsync(
-            new InviteMemberRequest
-            {
-                TenantId = id,
-                Email = body.Email,
-                Roles = body.Roles,
-                InvitedByUserId = _userScope.UserId,
-                ActorUserId = _userScope.UserId,
-                ActorPlatformRoles = _userScope.PlatformRoles
-            },
-            cancellationToken);
-
-        return Ok(new { id = inviteId });
-    }
-
-    [HttpPost("/v{version:apiVersion}/invites/accept")]
-    public async Task<IActionResult> AcceptInvite([FromBody] AcceptInviteBody body, CancellationToken cancellationToken)
-    {
-        var membershipId = await _tenantService.AcceptInviteAsync(
-            new AcceptInviteRequest
-            {
-                InviteToken = body.Token,
-                ActorUserId = _userScope.UserId
-            },
-            cancellationToken);
-
-        return Ok(new { membershipId });
-    }
-
-    public sealed record CreateTenantBody
-    {
-        public required string Name { get; init; }
-
-        public required string Key { get; init; }
-
-        public Guid? InitialAdministratorUserId { get; init; }
-    }
-
-    public sealed record UpdateTenantBody
-    {
-        public required string Name { get; init; }
-    }
-
-    public sealed record InviteMemberBody
-    {
-        public required string Email { get; init; }
-
-        public required IReadOnlyCollection<string> Roles { get; init; }
-    }
-
-    public sealed record AcceptInviteBody
-    {
-        public required string Token { get; init; }
     }
 }
