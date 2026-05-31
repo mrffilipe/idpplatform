@@ -1,11 +1,9 @@
 import AppsOutlinedIcon from '@mui/icons-material/AppsOutlined'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
-import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined'
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined'
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
-import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
@@ -30,9 +28,9 @@ import {
 import type { ReactElement } from 'react'
 import { useMemo, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
+import { ThemeModeToggle } from './ThemeModeToggle'
 import { PlatformBrand } from './ui/PlatformBrand'
 import { useAuth } from '../contexts/AuthContext'
-import { useThemeMode } from '../contexts/ThemeModeContext'
 import { useTenant } from '../contexts/TenantContext'
 import { buildLogoutUrl } from '../services/oidcService'
 import { layout } from '../theme'
@@ -106,7 +104,6 @@ export function AppLayout() {
   const location = useLocation()
   const { logoutLocal, email, platformRoles } = useAuth()
   const { tenantId } = useTenant()
-  const { mode, toggleMode } = useThemeMode()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const currentPath = useMemo(() => location.pathname, [location.pathname])
@@ -139,7 +136,7 @@ export function AppLayout() {
         borderColor: 'divider',
       }}
     >
-      <PlatformBrand logoSize={36} to="/" />
+      <PlatformBrand logoSize={64} to="/" />
     </Box>
   )
 
@@ -211,7 +208,7 @@ export function AppLayout() {
                 <MenuIcon />
               </IconButton>
             </Tooltip>
-            <PlatformBrand logoSize={32} to="/" />
+            <PlatformBrand logoSize={64} to="/" />
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
               {tenantId ? (
                 <Chip
@@ -223,11 +220,7 @@ export function AppLayout() {
               ) : (
                 <Chip size="small" label="Sem tenant" variant="outlined" color="warning" sx={{ display: { xs: 'none', sm: 'flex' } }} />
               )}
-              <Tooltip title={mode === 'light' ? 'Modo escuro' : 'Modo claro'}>
-                <IconButton color="inherit" onClick={toggleMode} aria-label="Alternar tema">
-                  {mode === 'light' ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
-                </IconButton>
-              </Tooltip>
+              <ThemeModeToggle />
               {email ? (
                 <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', lg: 'block' }, maxWidth: 180 }} noWrap>
                   {email}

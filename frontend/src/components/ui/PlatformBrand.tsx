@@ -1,5 +1,7 @@
-import { Box, Typography, type SxProps, type Theme } from '@mui/material'
+import { Box, type SxProps, type Theme } from '@mui/material'
 import { Link } from 'react-router'
+import { useThemeMode } from '../../contexts/ThemeModeContext'
+import { brandLogoSrc } from '../../theme/brandAssets'
 import { PlatformLogo } from './PlatformLogo'
 
 interface PlatformBrandProps {
@@ -9,24 +11,31 @@ interface PlatformBrandProps {
   sx?: SxProps<Theme>
 }
 
-export function PlatformBrand({ logoSize = 32, showTitle = true, to = '/', sx }: PlatformBrandProps) {
-  const inner = (
-    <>
-      <PlatformLogo size={logoSize} sx={{ mx: 0, flexShrink: 0 }} />
-      {showTitle ? (
-        <Typography variant="h6" component="span" sx={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-          Kyvo
-        </Typography>
-      ) : null}
-    </>
+export function PlatformBrand({ logoSize = 40, showTitle = true, to = '/', sx }: PlatformBrandProps) {
+  const { mode } = useThemeMode()
+  const logoSrc = brandLogoSrc(mode)
+
+  const inner = showTitle ? (
+    <Box
+      component="img"
+      src={logoSrc}
+      alt="Kyvo"
+      sx={{
+        height: logoSize,
+        width: 'auto',
+        maxWidth: '100%',
+        objectFit: 'contain',
+        display: 'block',
+      }}
+    />
+  ) : (
+    <PlatformLogo size={logoSize} sx={{ mx: 0 }} />
   )
 
   const boxSx = [
     {
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 1.25,
-      color: 'text.primary',
       textDecoration: 'none',
     },
     ...(Array.isArray(sx) ? sx : sx ? [sx] : []),

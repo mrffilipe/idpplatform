@@ -1,8 +1,7 @@
-/* Kyvo - Account pages (Login, Register)
-   Modern, accessible, mobile-first design. Light/dark themes automatic via prefers-color-scheme
-   with no JavaScript. Avoids any CSS framework to keep the surface area small. */
+/* Kyvo - Account pages (Login, Register). Theme: html[data-theme="light"|"dark"] + account-theme.js */
 
-:root {
+:root,
+html[data-theme="light"] {
     --background: #f7f7fb;
     --background-elevated: #ffffff;
     --foreground: #0b0d12;
@@ -22,29 +21,27 @@
     --radius-lg: 18px;
     --radius-md: 12px;
     --radius-sm: 8px;
-    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #0a0a0f;
-        --background-elevated: #14141d;
-        --foreground: #f4f4f8;
-        --foreground-muted: #c5c8d3;
-        --foreground-subtle: #8a8e9c;
-        --border: rgba(255, 255, 255, 0.08);
-        --border-strong: rgba(255, 255, 255, 0.18);
-        --primary: #818cf8;
-        --primary-hover: #a5b4fc;
-        --primary-foreground: #1b1b27;
-        --danger: #f87171;
-        --danger-bg: rgba(248, 113, 113, 0.12);
-        --focus-ring: rgba(129, 140, 248, 0.45);
-        --hero-from: #312e81;
-        --hero-to: #5b21b6;
-        --shadow-card: 0 30px 80px -40px rgba(0, 0, 0, 0.7), 0 12px 30px -18px rgba(0, 0, 0, 0.5);
-    }
+html[data-theme="dark"] {
+    --background: #0a0a0f;
+    --background-elevated: #14141d;
+    --foreground: #f4f4f8;
+    --foreground-muted: #c5c8d3;
+    --foreground-subtle: #8a8e9c;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-foreground: #1b1b27;
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.12);
+    --focus-ring: rgba(129, 140, 248, 0.45);
+    --hero-from: #312e81;
+    --hero-to: #5b21b6;
+    --shadow-card: 0 30px 80px -40px rgba(0, 0, 0, 0.7), 0 12px 30px -18px rgba(0, 0, 0, 0.5);
 }
 
 *,
@@ -116,19 +113,49 @@ body {
     max-width: 28rem;
 }
 
-.account-hero-mark {
+/* Brand icon badge — guideline white #FFFFFF */
+.account-hero-brand,
+.account-header-brand {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
+    width: fit-content;
+    max-width: 100%;
+    background: #ffffff;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.16);
-    backdrop-filter: blur(8px);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    margin-bottom: 1.5rem;
-    font-size: 1rem;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 4px 20px rgba(15, 18, 30, 0.12);
+}
+
+.account-hero-brand {
+    margin-bottom: 1.75rem;
+    padding: 0.65rem;
+}
+
+.account-hero-brand img {
+    height: 3.85rem;
+    width: 3.85rem;
+    display: block;
+    object-fit: contain;
+}
+
+.account-header-brand {
+    margin-bottom: 1.25rem;
+    padding: 0.55rem;
+    align-self: center;
+}
+
+.account-header-brand img {
+    height: 3.15rem;
+    width: 3.15rem;
+    display: block;
+    object-fit: contain;
+}
+
+@media (min-width: 1024px) {
+    .account-header-brand {
+        display: none;
+    }
 }
 
 .account-hero-title {
@@ -168,6 +195,13 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+}
+
+.account-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .account-header h1 {
@@ -376,6 +410,44 @@ body {
 .validation-message {
     color: var(--danger);
     font-size: 0.8125rem;
+}
+
+/* Theme toggle (login / register) */
+.account-theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--background-elevated);
+    color: var(--foreground-muted);
+    cursor: pointer;
+    box-shadow: var(--shadow-card);
+    transition: color 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.account-theme-toggle:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.account-theme-toggle:focus,
+.account-theme-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+html[data-theme="light"] .account-theme-toggle__icon--dark,
+html[data-theme="dark"] .account-theme-toggle__icon--light {
+    display: none;
 }
 
 /* Blur the hero subtly on small screens when not displayed (defensive) */

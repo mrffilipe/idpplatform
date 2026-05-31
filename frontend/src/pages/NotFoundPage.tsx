@@ -7,7 +7,7 @@ export function NotFoundPage() {
   return (
     <SectionCard>
       <Stack spacing={3} sx={{ alignItems: 'center', py: 4, textAlign: 'center' }}>
-        <SearchOffOutlinedIcon sx={{ fontSize: 64, color: 'action.disabled' }} />
+        <SearchOffOutlinedIcon sx={{ fontSize: 64, color: 'primary.main', opacity: 0.75 }} />
         <Stack spacing={1}>
           <Typography variant="h4">Página não encontrada</Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 400 }}>

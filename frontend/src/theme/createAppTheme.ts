@@ -4,7 +4,7 @@ import type { PaletteMode } from '@mui/material'
 import { paletteTokens, radius } from './tokens'
 
 function borderColor(mode: PaletteMode): string {
-  return mode === 'dark' ? alpha('#94a3b8', 0.14) : alpha('#0f172a', 0.08)
+  return mode === 'dark' ? alpha('#f4f4f8', 0.08) : alpha('#0b0d12', 0.08)
 }
 
 export function createAppTheme(mode: PaletteMode): Theme {
@@ -21,6 +21,10 @@ export function createAppTheme(mode: PaletteMode): Theme {
         text: tokens.text,
         background: tokens.background,
         divider,
+        action: {
+          active: tokens.text.secondary,
+          disabled: tokens.text.disabled,
+        },
       },
       shape: {
         borderRadius: radius.md,
@@ -48,8 +52,8 @@ export function createAppTheme(mode: PaletteMode): Theme {
             body: {
               margin: 0,
               minHeight: '100vh',
-              background: tokens.gradient,
-              backgroundAttachment: 'fixed',
+              backgroundColor: tokens.background.default,
+              backgroundImage: 'none',
             },
           },
         },
@@ -110,14 +114,14 @@ export function createAppTheme(mode: PaletteMode): Theme {
             },
             contained: {
               '&:hover': {
-                boxShadow: mode === 'dark' ? '0 4px 14px rgba(139, 143, 245, 0.22)' : '0 4px 14px rgba(85, 99, 232, 0.18)',
+                boxShadow: mode === 'dark' ? '0 4px 14px rgba(129, 140, 248, 0.22)' : '0 4px 14px rgba(79, 70, 229, 0.2)',
               },
             },
             text: {
               border: 'none',
               '&:hover': {
                 border: 'none',
-                backgroundColor: mode === 'dark' ? alpha('#94a3b8', 0.1) : alpha('#0f172a', 0.05),
+                backgroundColor: mode === 'dark' ? alpha('#c5c8d3', 0.1) : alpha('#0b0d12', 0.05),
               },
             },
           },
@@ -148,10 +152,10 @@ export function createAppTheme(mode: PaletteMode): Theme {
               borderRadius: radius.sm,
               ...(mode === 'dark' && {
                 '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: alpha('#94a3b8', 0.2),
+                  borderColor: alpha('#c5c8d3', 0.2),
                 },
                 '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: alpha('#94a3b8', 0.32),
+                  borderColor: alpha('#c5c8d3', 0.32),
                 },
               }),
             },
@@ -170,7 +174,7 @@ export function createAppTheme(mode: PaletteMode): Theme {
             root: {
               '& .MuiTableCell-head': {
                 fontWeight: 600,
-                backgroundColor: mode === 'dark' ? alpha('#94a3b8', 0.06) : alpha('#0f172a', 0.04),
+                backgroundColor: mode === 'dark' ? alpha('#c5c8d3', 0.06) : alpha('#0b0d12', 0.04),
               },
             },
           },
@@ -217,7 +221,7 @@ export function createAppTheme(mode: PaletteMode): Theme {
                 color: 'inherit',
               },
               '&:hover': {
-                backgroundColor: mode === 'dark' ? alpha('#94a3b8', 0.08) : alpha('#0f172a', 0.04),
+                backgroundColor: mode === 'dark' ? alpha('#c5c8d3', 0.08) : alpha('#0b0d12', 0.04),
               },
               '&.Mui-selected': {
                 backgroundColor: alpha(tokens.primary.main, mode === 'dark' ? 0.18 : 0.1),
@@ -266,7 +270,7 @@ export function createAppTheme(mode: PaletteMode): Theme {
             },
             outlined: {
               ...(mode === 'dark' && {
-                borderColor: alpha('#94a3b8', 0.24),
+                borderColor: alpha('#c5c8d3', 0.24),
               }),
             },
           },
@@ -302,7 +306,7 @@ export function createAppTheme(mode: PaletteMode): Theme {
         MuiStepIcon: {
           styleOverrides: {
             root: {
-              color: mode === 'dark' ? alpha('#94a3b8', 0.35) : alpha('#0f172a', 0.2),
+              color: mode === 'dark' ? alpha('#8a8e9c', 0.35) : alpha('#0b0d12', 0.2),
               '&.Mui-active': {
                 color: tokens.primary.main,
               },
@@ -319,5 +323,5 @@ export function createAppTheme(mode: PaletteMode): Theme {
 
 export function getAuthBackground(mode: PaletteMode): string {
   const tokens = mode === 'dark' ? paletteTokens.dark : paletteTokens.light
-  return `${tokens.authPattern}, ${tokens.gradient}`
+  return tokens.background.default
 }

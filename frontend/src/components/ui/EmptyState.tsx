@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, useTheme } from '@mui/material'
 
 interface EmptyStateProps {
   title?: string
@@ -13,6 +13,8 @@ export function EmptyState({
   description,
   icon,
 }: EmptyStateProps) {
+  const theme = useTheme()
+
   return (
     <Box
       sx={{
@@ -22,7 +24,17 @@ export function EmptyState({
         color: 'text.secondary',
       }}
     >
-      <Box sx={{ mb: 1.5, color: 'action.disabled' }}>{icon ?? <InboxOutlinedIcon sx={{ fontSize: 48 }} />}</Box>
+      <Box
+        sx={{
+          mb: 1.5,
+          display: 'inline-flex',
+          color: 'primary.main',
+          opacity: theme.palette.mode === 'dark' ? 0.85 : 0.7,
+          '& svg': { fontSize: 48 },
+        }}
+      >
+        {icon ?? <InboxOutlinedIcon />}
+      </Box>
       <Typography variant="subtitle1" color="text.primary" gutterBottom>
         {title}
       </Typography>
