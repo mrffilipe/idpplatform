@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TenancyKit.Abstractions;
 using TenancyKit.Core;
 using TenancyKit.EntityFrameworkCore;
-using IdPPlatform.AspNetCore.TenancyKit;
+using Kyvo.AspNetCore.TenancyKit;
 
 namespace PulseCrm.Api.Data;
 

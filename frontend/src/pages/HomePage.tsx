@@ -67,7 +67,7 @@ export function HomePage() {
     <Stack spacing={3}>
       <PageHeader
         title="Dashboard"
-        description="Acesso rápido aos módulos de administração da plataforma IdP."
+        description="Acesso rápido aos módulos de administração da Kyvo."
       />
       <Grid container spacing={2}>
         {modules.map((module) => (

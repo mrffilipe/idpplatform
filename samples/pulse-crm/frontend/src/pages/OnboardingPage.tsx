@@ -21,7 +21,7 @@ export function OnboardingPage() {
   return (
     <div className="page">
       <h1>Escolha seu plano</h1>
-      <p className="muted">Após o pagamento (mock), vinculamos sua organização à aplicação Pulse CRM na IdP.</p>
+      <p className="muted">Após o pagamento (mock), vinculamos sua organização à aplicação Pulse CRM na Kyvo.</p>
 
       <label className="field">
         <span>Nome da empresa</span>

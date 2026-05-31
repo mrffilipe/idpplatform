@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { idpClient } from '../config/idpClient'
+import { kyvoClient } from '../config/kyvoClient'
 import { saveSession } from '../utils/authStorage'
 import { getMe } from '../services/crmApi'
 
@@ -22,18 +22,18 @@ export function AuthCallbackPage() {
       return
     }
 
-    if (!idpClient.oidc.tryAcquireCallbackLock()) return
+    if (!kyvoClient.oidc.tryAcquireCallbackLock()) return
 
     void (async () => {
       try {
-        const tokens = await idpClient.oidc.handleCallback(code, searchParams.get('state'))
-        idpClient.oidc.clearOidcRequest()
+        const tokens = await kyvoClient.oidc.handleCallback(code, searchParams.get('state'))
+        kyvoClient.oidc.clearOidcRequest()
         saveSession(tokens)
 
         const me = await getMe()
         navigate(me.hasSubscription ? '/dashboard' : '/onboarding', { replace: true })
       } catch (e) {
-        idpClient.oidc.releaseCallbackLock()
+        kyvoClient.oidc.releaseCallbackLock()
         setError(e instanceof Error ? e.message : 'Callback failed')
       }
     })()

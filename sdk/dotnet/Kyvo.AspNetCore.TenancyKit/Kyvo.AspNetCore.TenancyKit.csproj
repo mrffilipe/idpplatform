@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kyvo.AspNetCore.TenancyKit</RootNamespace>
+    <Version>1.0.0</Version>
+    <Description>TenancyKit bridge for Kyvo product APIs (tid claim).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="TenancyKit" Version="1.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kyvo.AspNetCore\Kyvo.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>

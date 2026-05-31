@@ -1,6 +1,8 @@
-# IdP Platform — Backend
+# Kyvo — Backend
 
 [English](./README.md) | [Português](./README.pt-BR.md)
+
+> **Pronúncia:** *Kyvo* pronuncia-se como **"Key"vo** — parecido com a palavra inglesa *key* + *vo*.
 
 API .NET 8 que implementa um **Identity Provider (IdP)** completo: autenticação local, OIDC (authorization code + PKCE), multi-tenant, roles, aplicações OAuth e federação de provedores externos.
 
@@ -13,10 +15,10 @@ API .NET 8 que implementa um **Identity Provider (IdP)** completo: autenticaçã
 A solução segue **Clean Architecture** com 4 projetos:
 
 ```
-IdPPlatform.Domain          → Entidades, value objects, interfaces de repositório, regras de domínio
-IdPPlatform.Application     → Services por agregado, DTOs, requests, interfaces de serviços técnicos
-IdPPlatform.Infrastructure  → Implementações: EF Core, OIDC, email (AWS SES), serviços técnicos
-IdPPlatform.API             → Controllers ASP.NET Core, Program.cs, middlewares, views MVC (login)
+Kyvo.Domain          → Entidades, value objects, interfaces de repositório, regras de domínio
+Kyvo.Application     → Services por agregado, DTOs, requests, interfaces de serviços técnicos
+Kyvo.Infrastructure  → Implementações: EF Core, OIDC, email (AWS SES), serviços técnicos
+Kyvo.API             → Controllers ASP.NET Core, Program.cs, middlewares, views MVC (login)
 ```
 
 ### Services por agregado (Application layer)
@@ -65,7 +67,7 @@ Bearer JWT → controllers v1 protegidos
 
 ## Configuração
 
-Todas as configurações ficam em `IdPPlatform.API/appsettings.json` (template) e `appsettings.Development.json` (valores de desenvolvimento local).
+Todas as configurações ficam em `Kyvo.API/appsettings.json` (template) e `appsettings.Development.json` (valores de desenvolvimento local).
 
 ### Seções do appsettings
 
@@ -121,7 +123,7 @@ O JWT é assinado com RSA (RS256). Gere a chave antes de iniciar.
 ```bash
 cd backend
 dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
-# Grava IdPPlatform.API/keys/oidc-signing.pem por padrão
+# Grava Kyvo.API/keys/oidc-signing.pem por padrão
 ```
 
 Caminho customizado: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj -- caminho/para/chave.pem`
@@ -129,7 +131,7 @@ Caminho customizado: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey
 **Alternativa com OpenSSL:**
 
 ```bash
-cd backend/IdPPlatform.API
+cd backend/Kyvo.API
 mkdir keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
 ```
@@ -155,7 +157,7 @@ O JSON de configuração dos IdPs (`IdentityProvider.ConfigJson`) costuma conter
 Na raiz do repositório:
 
 ```bash
-docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
+docker build -f backend/Dockerfile -t mrffilipe/kyvo-api:<tag> .
 ```
 
 ---
@@ -170,11 +172,11 @@ dotnet restore
 
 # 2. Aplicar migration (banco deve existir)
 dotnet ef database update \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 
 # 3. Iniciar a API
-dotnet run --project IdPPlatform.API
+dotnet run --project Kyvo.API
 ```
 
 A API sobe em `http://localhost:5000`. Swagger disponível em `/swagger` nos ambientes Development/Staging.
@@ -313,17 +315,17 @@ Ver `frontend/swagger.json` para a lista completa de endpoints.
 ```bash
 # Gerar nova migration
 dotnet ef migrations add NomeDaMigration \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API \
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API \
   --output-dir Migrations
 
 # Aplicar ao banco
 dotnet ef database update \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 
 # Remover última migration (não aplicada)
 dotnet ef migrations remove \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 ```

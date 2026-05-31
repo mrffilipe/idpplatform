@@ -1,6 +1,8 @@
-# IdP Platform — Backend
+# Kyvo — Backend
 
 [English](./README.md) | [Português](./README.pt-BR.md)
+
+> **Pronunciation:** *Kyvo* is pronounced like **"Key"vo** — rhymes with English *key* plus *vo*.
 
 A .NET 8 API that implements a full **Identity Provider (IdP)**: local authentication, OIDC (authorization code + PKCE), multi-tenancy, roles, OAuth applications, and federation with external providers.
 
@@ -13,10 +15,10 @@ A .NET 8 API that implements a full **Identity Provider (IdP)**: local authentic
 The solution follows **Clean Architecture** with 4 projects:
 
 ```
-IdPPlatform.Domain          → Entities, value objects, repository interfaces, domain rules
-IdPPlatform.Application     → Services per aggregate, DTOs, requests, technical service interfaces
-IdPPlatform.Infrastructure  → Implementations: EF Core, OIDC, email (AWS SES), technical services
-IdPPlatform.API             → ASP.NET Core controllers, Program.cs, middlewares, MVC views (login)
+Kyvo.Domain          → Entities, value objects, repository interfaces, domain rules
+Kyvo.Application     → Services per aggregate, DTOs, requests, technical service interfaces
+Kyvo.Infrastructure  → Implementations: EF Core, OIDC, email (AWS SES), technical services
+Kyvo.API             → ASP.NET Core controllers, Program.cs, middlewares, MVC views (login)
 ```
 
 ### Services per aggregate (Application layer)
@@ -65,7 +67,7 @@ Bearer JWT → protected v1 controllers
 
 ## Configuration
 
-All configuration lives in `IdPPlatform.API/appsettings.json` (template) and `appsettings.Development.json` (local development values).
+All configuration lives in `Kyvo.API/appsettings.json` (template) and `appsettings.Development.json` (local development values).
 
 ### Appsettings sections
 
@@ -121,7 +123,7 @@ JWTs are signed with RSA (RS256). Generate the key before starting.
 ```bash
 cd backend
 dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
-# Writes IdPPlatform.API/keys/oidc-signing.pem by default
+# Writes Kyvo.API/keys/oidc-signing.pem by default
 ```
 
 Custom path: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj -- path/to/key.pem`
@@ -129,7 +131,7 @@ Custom path: `dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj 
 **OpenSSL alternative:**
 
 ```bash
-cd backend/IdPPlatform.API
+cd backend/Kyvo.API
 mkdir keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
 ```
@@ -155,7 +157,7 @@ Identity provider configuration JSON (`IdentityProvider.ConfigJson`) frequently 
 From the repository root:
 
 ```bash
-docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
+docker build -f backend/Dockerfile -t mrffilipe/kyvo-api:<tag> .
 ```
 
 ---
@@ -170,11 +172,11 @@ dotnet restore
 
 # 2. Apply migrations (the database must already exist)
 dotnet ef database update \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 
 # 3. Start the API
-dotnet run --project IdPPlatform.API
+dotnet run --project Kyvo.API
 ```
 
 The API runs at `http://localhost:5000`. Swagger is available under `/swagger` in Development/Staging.
@@ -320,19 +322,19 @@ See `frontend/swagger.json` for the complete endpoint list.
 ```bash
 # Create a new migration
 dotnet ef migrations add MigrationName \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API \
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API \
   --output-dir Migrations
 
 # Apply to the database
 dotnet ef database update \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 
 # Remove the last (unapplied) migration
 dotnet ef migrations remove \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 ```
 
 ---
@@ -340,7 +342,7 @@ dotnet ef migrations remove \
 ## Project structure
 
 ```
-IdPPlatform.API/
+Kyvo.API/
 ├── Components/          Blazor Web App (Static SSR) - login/register pages and shared layout
 │   ├── App.razor            Root document (html/head/body)
 │   ├── Routes.razor         Router
@@ -354,7 +356,7 @@ IdPPlatform.API/
 ├── appsettings.json     Configuration template
 └── Program.cs           Startup (DI, OIDC, policies, rate limiting, Razor components)
 
-IdPPlatform.Application/
+Kyvo.Application/
 ├── Services/            Interfaces and DTOs per aggregate
 │   ├── AppService/      IApplicationService
 │   ├── AuditLog/        IAuditLogService
@@ -372,7 +374,7 @@ IdPPlatform.Application/
 ├── Common/              PagedRequest, PagedResult, ApplicationClientListFields
 └── Exceptions/          ApplicationErrorMessages (static messages)
 
-IdPPlatform.Infrastructure/
+Kyvo.Infrastructure/
 ├── Configurations/      JwtOptions, BootstrapOptions, DatabaseOptions, SecretProtectionOptions, PasswordPolicyOptions, validators
 ├── Extensions/          AddInfrastructure, AddAggregateServices, AddRepositories, AddServices, AddSecretProtection
 ├── Migrations/          FirstMigration

@@ -2,7 +2,9 @@
 
 [English](./DOCKER_PUBLISH.md) | [Português](./DOCKER_PUBLISH.pt-BR.md)
 
-Este guia é para **mantenedores do repositório** que fazem build e push da imagem do IdP Platform. Operadores que implantam imagens publicadas devem usar [GETTING_STARTED.pt-BR.md § Produção](../GETTING_STARTED.pt-BR.md#7-deploy-em-produção-docker-compose).
+> **Pronúncia:** *Kyvo* pronuncia-se como **"Key"vo** — parecido com a palavra inglesa *key* + *vo*.
+
+Este guia é para **mantenedores do repositório** que fazem build e push da imagem do Kyvo. Operadores que implantam imagens publicadas devem usar [GETTING_STARTED.pt-BR.md § Produção](../GETTING_STARTED.pt-BR.md#7-deploy-em-produção-docker-compose).
 
 ---
 
@@ -10,7 +12,7 @@ Este guia é para **mantenedores do repositório** que fazem build e push da ima
 
 | Imagem | Dockerfile | Nome no registry (sugerido) |
 |--------|------------|----------------------------|
-| IdP Platform (monólito) | [docker/Dockerfile](../docker/Dockerfile) | `mrffilipe/idpplatform` |
+| Kyvo (monólito) | [docker/Dockerfile](../docker/Dockerfile) | `mrffilipe/kyvo` |
 
 O monólito inclui:
 
@@ -50,7 +52,7 @@ Workflow: [.github/workflows/docker-publish.yml](../.github/workflows/docker-pub
 | **Gatilhos** | Tag `v*`; `workflow_dispatch` |
 | **Job** | `build-app` |
 | **Registry** | Docker Hub |
-| **Imagem** | `mrffilipe/idpplatform` |
+| **Imagem** | `mrffilipe/kyvo` |
 
 ### Secrets (obrigatórios)
 
@@ -84,10 +86,10 @@ Substitua `<versao>` pela tag desejada (ex.: `1.0.0`).
 ```bash
 docker login
 
-docker build -f docker/Dockerfile -t mrffilipe/idpplatform:<versao> .
-docker tag mrffilipe/idpplatform:<versao> mrffilipe/idpplatform:latest
-docker push mrffilipe/idpplatform:<versao>
-docker push mrffilipe/idpplatform:latest
+docker build -f docker/Dockerfile -t mrffilipe/kyvo:<versao> .
+docker tag mrffilipe/kyvo:<versao> mrffilipe/kyvo:latest
+docker push mrffilipe/kyvo:<versao>
+docker push mrffilipe/kyvo:latest
 ```
 
 ---
@@ -95,8 +97,8 @@ docker push mrffilipe/idpplatform:latest
 ## GHCR (alternativa)
 
 ```bash
-docker tag mrffilipe/idpplatform:<versao> ghcr.io/mrffilipe/idpplatform:<versao>
-docker push ghcr.io/mrffilipe/idpplatform:<versao>
+docker tag mrffilipe/kyvo:<versao> ghcr.io/mrffilipe/kyvo:<versao>
+docker push ghcr.io/mrffilipe/kyvo:<versao>
 ```
 
 ---

@@ -1,11 +1,11 @@
 import { Link, Outlet } from 'react-router-dom'
-import { idpClient } from '../config/idpClient'
+import { kyvoClient } from '../config/kyvoClient'
 import { clearSession } from '../utils/authStorage'
 
 export function Layout() {
   function handleLogout() {
     clearSession()
-    idpClient.oidc.signOut(`${window.location.origin}/login`)
+    kyvoClient.oidc.signOut(`${window.location.origin}/login`)
   }
 
   return (

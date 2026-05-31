@@ -1,12 +1,12 @@
 {
-  "name": "@idpplatform/sdk-workspace",
+  "name": "@kyvo/sdk-workspace",
   "private": true,
   "version": "1.0.0",
   "workspaces": [
-    "@idpplatform/client"
+    "@kyvo/client"
   ],
   "scripts": {
-    "build": "npm run build -w @idpplatform/client",
-    "test": "npm run test -w @idpplatform/client"
+    "build": "npm run build -w @kyvo/client",
+    "test": "npm run test -w @kyvo/client"
   }
 }

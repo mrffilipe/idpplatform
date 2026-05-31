@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using IdPPlatform.AspNetCore;
-using IdPPlatform.AspNetCore.TenancyKit;
-using IdPPlatform.Client;
+using Kyvo.AspNetCore;
+using Kyvo.AspNetCore.TenancyKit;
+using Kyvo.Client;
 using Microsoft.EntityFrameworkCore;
 using PulseCrm.Api.Configuration;
 using PulseCrm.Api.Data;
@@ -14,20 +14,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.Section));
 
-var allowInvalidIdpCertificate = builder.Configuration.GetValue(
-    "IdP:AllowInvalidIdpCertificate",
+var allowInvalidKyvoCertificate = builder.Configuration.GetValue(
+    "Kyvo:AllowInvalidKyvoCertificate",
     builder.Environment.IsDevelopment());
 
 builder.Services
-    .AddIdPPlatformAuthentication(builder.Configuration, IdPPlatformOptions.SectionName)
-    .PostConfigure<IdPPlatformOptions>(o => o.AllowInvalidCertificate = allowInvalidIdpCertificate);
+    .AddKyvoAuthentication(builder.Configuration, KyvoOptions.SectionName)
+    .PostConfigure<KyvoOptions>(o => o.AllowInvalidCertificate = allowInvalidKyvoCertificate);
 
 builder.Services
-    .AddIdPPlatformClient(builder.Configuration)
-    .PostConfigure<IdPPlatformClientOptions>(o => o.AllowInvalidCertificate = allowInvalidIdpCertificate);
+    .AddKyvoClient(builder.Configuration)
+    .PostConfigure<KyvoClientOptions>(o => o.AllowInvalidCertificate = allowInvalidKyvoCertificate);
 
 builder.Services
-    .AddIdPPlatformTenancyKit<ProductTenantInfo>(options =>
+    .AddKyvoTenancyKit<ProductTenantInfo>(options =>
     {
         options.UseMissingTenantBehavior(MissingTenantBehavior.Ignore);
         options.UseClaimsTenantResolver("tid");

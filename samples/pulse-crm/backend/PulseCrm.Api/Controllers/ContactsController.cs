@@ -1,4 +1,4 @@
-using IdPPlatform.AspNetCore;
+using Kyvo.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +12,10 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/contacts")]
 public sealed class ContactsController : ControllerBase
 {
-    private readonly IIdPUserContext _user;
+    private readonly IKyvoUserContext _user;
     private readonly PulseCrmDbContext _db;
 
-    public ContactsController(IIdPUserContext user, PulseCrmDbContext db)
+    public ContactsController(IKyvoUserContext user, PulseCrmDbContext db)
     {
         _user = user;
         _db = db;

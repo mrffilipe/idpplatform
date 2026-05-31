@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { idpClient } from '../config/idpClient'
+import { kyvoClient } from '../config/kyvoClient'
 import { getMe } from '../services/crmApi'
 import type { MeResponse } from '../types/crm'
 
@@ -13,9 +13,9 @@ export function DashboardPage() {
       try {
         const profile = await getMe()
         setMe(profile)
-        const token = idpClient.getAccessToken()
+        const token = kyvoClient.getAccessToken()
         if (token) {
-          setUserInfo(await idpClient.oidc.fetchUserInfo(token))
+          setUserInfo(await kyvoClient.oidc.fetchUserInfo(token))
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load profile')

@@ -1,5 +1,5 @@
-// Default values must stay in sync with backend/IdPPlatform.Domain/Constants/PlatformDefaults.cs
-// (admin console client id and redirect URI) and backend/IdPPlatform.API/appsettings.Development.json
+// Default values must stay in sync with backend/Kyvo.Domain/Constants/PlatformDefaults.cs
+// (admin console client id and redirect URI) and backend/Kyvo.API/appsettings.Development.json
 // (issuer/api base url) so the admin SPA runs without an .env file in local development.
 //
 // Monolith Docker image: VITE_API_BASE_URL and VITE_OAUTH_REDIRECT_URI are left empty at build time;

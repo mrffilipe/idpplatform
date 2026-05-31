@@ -13,7 +13,7 @@ interface AuthLayoutProps extends PropsWithChildren {
 export function AuthLayout({
   children,
   maxWidth = layout.authMaxWidth,
-  title = 'IdP Platform',
+  title = 'Kyvo',
   subtitle = 'Identity Provider centralizado para suas aplicações',
 }: AuthLayoutProps) {
   const { mode } = useThemeMode()

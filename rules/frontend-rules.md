@@ -87,7 +87,7 @@ src/
 
 ## 11. Backend coordination
 
-- Endpoint paths and OAuth client defaults are owned by the backend. When changing them, update the backend constants (`PlatformDefaults`, controllers under `IdPPlatform.API/Controllers/`) **and** the frontend env defaults in the same PR.
+- Endpoint paths and OAuth client defaults are owned by the backend. When changing them, update the backend constants (`PlatformDefaults`, controllers under `Kyvo.API/Controllers/`) **and** the frontend env defaults in the same PR.
 - The discovery document (`/.well-known/openid-configuration`) is the source of truth at runtime; if a backend endpoint moves, the frontend should still work as long as discovery is consulted before fixed paths.
 
 ## 12. Account creation and signup

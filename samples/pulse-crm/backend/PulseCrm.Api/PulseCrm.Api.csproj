@@ -17,9 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\sdk\dotnet\IdPPlatform.AspNetCore\IdPPlatform.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\..\..\sdk\dotnet\IdPPlatform.Client\IdPPlatform.Client.csproj" />
-    <ProjectReference Include="..\..\..\..\sdk\dotnet\IdPPlatform.AspNetCore.TenancyKit\IdPPlatform.AspNetCore.TenancyKit.csproj" />
+    <ProjectReference Include="..\..\..\..\sdk\dotnet\Kyvo.AspNetCore\Kyvo.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\..\sdk\dotnet\Kyvo.Client\Kyvo.Client.csproj" />
+    <ProjectReference Include="..\..\..\..\sdk\dotnet\Kyvo.AspNetCore.TenancyKit\Kyvo.AspNetCore.TenancyKit.csproj" />
   </ItemGroup>
 
 </Project>

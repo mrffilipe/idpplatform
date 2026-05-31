@@ -6,6 +6,6 @@ All SDK packages follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Initial product SDK: `@idpplatform/client`, `IdPPlatform.AspNetCore`, `IdPPlatform.Client`, `IdPPlatform.AspNetCore.TenancyKit`
+- Initial product SDK: `@kyvo/client`, `Kyvo.AspNetCore`, `Kyvo.Client`, `Kyvo.AspNetCore.TenancyKit`
 - Subscribe only on .NET client (BFF pattern)
 - Pulse CRM sample migration

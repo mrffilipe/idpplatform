@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@idpplatform/client': path.resolve(
+      '@kyvo/client': path.resolve(
         __dirname,
-        '../../../sdk/typescript/@idpplatform/client/src/index.ts',
+        '../../../sdk/typescript/@kyvo/client/src/index.ts',
       ),
     },
   },

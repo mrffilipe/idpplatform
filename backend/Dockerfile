@@ -1,28 +1,28 @@
-# Build from repository root:
-#   docker build -f backend/Dockerfile -t mrffilipe/idpplatform-api:<tag> .
+﻿# Build from repository root:
+#   docker build -f backend/Dockerfile -t mrffilipe/kyvo-api:<tag> .
 
 # Restore and publish the API
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY backend/IdPPlatform.Domain/IdPPlatform.Domain.csproj backend/IdPPlatform.Domain/
-COPY backend/IdPPlatform.Application/IdPPlatform.Application.csproj backend/IdPPlatform.Application/
-COPY backend/IdPPlatform.Infrastructure/IdPPlatform.Infrastructure.csproj backend/IdPPlatform.Infrastructure/
-COPY backend/IdPPlatform.API/IdPPlatform.API.csproj backend/IdPPlatform.API/
+COPY backend/Kyvo.Domain/Kyvo.Domain.csproj backend/Kyvo.Domain/
+COPY backend/Kyvo.Application/Kyvo.Application.csproj backend/Kyvo.Application/
+COPY backend/Kyvo.Infrastructure/Kyvo.Infrastructure.csproj backend/Kyvo.Infrastructure/
+COPY backend/Kyvo.API/Kyvo.API.csproj backend/Kyvo.API/
 
-RUN dotnet restore backend/IdPPlatform.API/IdPPlatform.API.csproj
+RUN dotnet restore backend/Kyvo.API/Kyvo.API.csproj
 
 COPY backend/ .
 
 WORKDIR /src
-RUN dotnet publish IdPPlatform.API/IdPPlatform.API.csproj -c Release -o /app/publish
+RUN dotnet publish Kyvo.API/Kyvo.API.csproj -c Release -o /app/publish
 
 # Bundle EF migrations for container startup
 RUN dotnet tool install --global dotnet-ef --version 8.0.26
 ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet ef migrations bundle \
-    --project IdPPlatform.Infrastructure/IdPPlatform.Infrastructure.csproj \
-    --startup-project IdPPlatform.API/IdPPlatform.API.csproj \
+    --project Kyvo.Infrastructure/Kyvo.Infrastructure.csproj \
+    --startup-project Kyvo.API/Kyvo.API.csproj \
     --output /app/efbundle \
     --self-contained \
     --target-runtime linux-x64

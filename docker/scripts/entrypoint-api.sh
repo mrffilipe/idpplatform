@@ -7,4 +7,4 @@ if [ "${Database__ApplyMigrationsOnStartup:-true}" = "true" ]; then
   ./efbundle
 fi
 
-exec dotnet IdPPlatform.API.dll
+exec dotnet Kyvo.API.dll

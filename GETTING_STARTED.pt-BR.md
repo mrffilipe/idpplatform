@@ -1,8 +1,10 @@
-# Getting Started — IdP Platform
+# Getting Started — Kyvo
 
 [English](./GETTING_STARTED.md) | [Português](./GETTING_STARTED.pt-BR.md)
 
-Guia para rodar o IdP Platform em **desenvolvimento** (código-fonte) ou **produção** (imagens Docker publicadas).
+> **Pronúncia:** *Kyvo* pronuncia-se como **"Key"vo** — parecido com a palavra inglesa *key* + *vo*.
+
+Guia para rodar o Kyvo em **desenvolvimento** (código-fonte) ou **produção** (imagens Docker publicadas).
 
 ### Escolha o caminho
 
@@ -35,8 +37,8 @@ Instale antes de continuar:
 Clone o repositório:
 
 ```bash
-git clone https://github.com/mrffilipe/idpplatform.git
-cd idpplatform
+git clone https://github.com/mrffilipe/kyvo.git
+cd kyvo
 ```
 
 ---
@@ -46,13 +48,13 @@ cd idpplatform
 Crie um banco PostgreSQL para o projeto:
 
 ```sql
-CREATE DATABASE idpplatform_db;
+CREATE DATABASE kyvo_db;
 ```
 
 Ou via linha de comando:
 
 ```bash
-createdb idpplatform_db
+createdb kyvo_db
 ```
 
 ---
@@ -61,12 +63,12 @@ createdb idpplatform_db
 
 ### 3.1 Editar appsettings de desenvolvimento
 
-No arquivo `backend/IdPPlatform.API/appsettings.Development.json`, ajuste a string de conexão:
+No arquivo `backend/Kyvo.API/appsettings.Development.json`, ajuste a string de conexão:
 
 ```json
 {
   "Database": {
-    "ConnectionString": "Host=localhost;Port=5432;Database=idpplatform_db;Username=SEU_USUARIO;Password=SUA_SENHA"
+    "ConnectionString": "Host=localhost;Port=5432;Database=kyvo_db;Username=SEU_USUARIO;Password=SUA_SENHA"
   }
 }
 ```
@@ -75,7 +77,7 @@ As demais seções já têm valores padrão adequados para desenvolvimento local
 
 ### 3.2 Gerar a chave RSA para assinar os JWTs
 
-O OIDC usa RS256 (RSA + SHA-256). A solução inclui o utilitário **GenerateOidcKey**, que grava a chave diretamente em `IdPPlatform.API/keys/oidc-signing.pem`:
+O OIDC usa RS256 (RSA + SHA-256). A solução inclui o utilitário **GenerateOidcKey**, que grava a chave diretamente em `Kyvo.API/keys/oidc-signing.pem`:
 
 ```bash
 cd backend
@@ -85,7 +87,7 @@ dotnet run --project tools/GenerateOidcKey/GenerateOidcKey.csproj
 Alternativa com OpenSSL:
 
 ```bash
-cd backend/IdPPlatform.API
+cd backend/Kyvo.API
 mkdir keys
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out keys/oidc-signing.pem
 ```
@@ -116,8 +118,8 @@ Para desenvolvimento, a forma mais simples é editar o appsettings:
 cd backend
 
 dotnet ef database update \
-  --project IdPPlatform.Infrastructure \
-  --startup-project IdPPlatform.API
+  --project Kyvo.Infrastructure \
+  --startup-project Kyvo.API
 ```
 
 Isso cria todas as tabelas (`users`, `user_credentials`, `platform_roles`, `identity_providers`, `tenants`, `applications`, `application_clients`, `auth_sessions`, `audit_logs`, etc.).
@@ -126,7 +128,7 @@ Isso cria todas as tabelas (`users`, `user_credentials`, `platform_roles`, `iden
 
 ```bash
 cd backend
-dotnet run --project IdPPlatform.API
+dotnet run --project Kyvo.API
 ```
 
 A API estará disponível em `http://localhost:5000`. O Swagger fica em `http://localhost:5000/swagger`.
@@ -313,7 +315,7 @@ Passos:
 
 ## 7. Deploy em produção (Docker Compose)
 
-Implante o IdP Platform com **imagens de container publicadas**. Não é necessário clonar este repositório (exceto opcionalmente para gerar a chave OIDC com `GenerateOidcKey`).
+Implante o Kyvo com **imagens de container publicadas**. Não é necessário clonar este repositório (exceto opcionalmente para gerar a chave OIDC com `GenerateOidcKey`).
 
 **PostgreSQL e Redis são obrigatórios** e não estão no exemplo de compose da aplicação abaixo.
 
@@ -323,7 +325,7 @@ Implante o IdP Platform com **imagens de container publicadas**. Não é necess�
 |------------|------------|
 | Docker Engine + Docker Compose v2 | Executar containers |
 | PostgreSQL + Redis | Acessíveis pelo container do app |
-| Imagem publicada no Docker Hub | `mrffilipe/idpplatform:<tag>` (defina `IMAGE_TAG` no `.env`) |
+| Imagem publicada no Docker Hub | `mrffilipe/kyvo:<tag>` (defina `IMAGE_TAG` no `.env`) |
 | Certificados TLS | `fullchain.pem` e `privkey.pem` em `./certs/` |
 
 Não é necessário .NET SDK nem Node.js no host, salvo para gerar a chave OIDC a partir deste repo.
@@ -342,10 +344,10 @@ Defina **`Jwt__Issuer`** exatamente como a URL que o navegador usa (esquema + ho
 
 ### Diretório de deploy sugerido
 
-Crie uma pasta fora deste repositório (ex.: `idpplatform-deploy/`) com:
+Crie uma pasta fora deste repositório (ex.: `kyvo-deploy/`) com:
 
 ```
-idpplatform-deploy/
+kyvo-deploy/
   docker-compose.yml
   .env
   certs/fullchain.pem
@@ -358,7 +360,7 @@ idpplatform-deploy/
 Salve como `docker-compose.infra.yml` na pasta de deploy (ou use serviços gerenciados).
 
 ```yaml
-# PostgreSQL + Redis locais sugeridos (não versionados no IdP Platform)
+# PostgreSQL + Redis locais sugeridos (não versionados no Kyvo)
 services:
   postgres:
     image: postgres:16-alpine
@@ -366,13 +368,13 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
-      POSTGRES_DB: ${POSTGRES_DB:-idpplatform_db}
+      POSTGRES_DB: ${POSTGRES_DB:-kyvo_db}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-idpplatform_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kyvo_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -399,7 +401,7 @@ Exemplo de `.env` para o snippet (mesmo diretório do arquivo acima):
 ```env
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgrespassword
-POSTGRES_DB=idpplatform_db
+POSTGRES_DB=kyvo_db
 POSTGRES_PORT=5432
 REDIS_PASSWORD=default_password
 REDIS_PORT=6379
@@ -415,7 +417,7 @@ docker compose -f docker-compose.infra.local.yml --env-file .env.infra up -d
 |-------------------|-----------------|-----|
 | `POSTGRES_USER` | `postgres` | Usuário do banco |
 | `POSTGRES_PASSWORD` | (definir senha forte) | Senha do banco |
-| `POSTGRES_DB` | `idpplatform_db` | Nome do banco |
+| `POSTGRES_DB` | `kyvo_db` | Nome do banco |
 | `POSTGRES_PORT` | `5432` | Porta no host |
 | `REDIS_PASSWORD` | (definir senha forte) | Senha do Redis |
 | `REDIS_PORT` | `6379` | Porta no host |
@@ -427,13 +429,13 @@ Alinhe `Database__ConnectionString` e `Redis__ConnectionString` no `.env` com es
 Salve como `docker-compose.yml` na pasta de deploy:
 
 ```yaml
-# IdP Platform — imagem monólito (API + SPA admin + proxy HTTPS)
+# Kyvo — imagem monólito (API + SPA admin + proxy HTTPS)
 # Exige PostgreSQL e Redis acessíveis pelo container.
 
 services:
   app:
-    image: mrffilipe/idpplatform:${IMAGE_TAG:-latest}
-    container_name: idpplatform-app
+    image: mrffilipe/kyvo:${IMAGE_TAG:-latest}
+    container_name: kyvo-app
     restart: unless-stopped
     env_file:
       - path: .env
@@ -458,27 +460,27 @@ volumes:
 Salve como `.env` ao lado de `docker-compose.yml`:
 
 ```env
-# Imagem publicada (Docker Hub: mrffilipe/idpplatform)
+# Imagem publicada (Docker Hub: mrffilipe/kyvo)
 IMAGE_TAG=1.0.0
 
 PROXY_HTTP_PORT=80
 PROXY_HTTPS_PORT=443
 
-Database__ConnectionString=Host=host.docker.internal;Port=5432;Database=idpplatform_db;Username=postgres;Password=postgrespassword
+Database__ConnectionString=Host=host.docker.internal;Port=5432;Database=kyvo_db;Username=postgres;Password=postgrespassword
 Database__ApplyMigrationsOnStartup=true
 
 Jwt__Issuer=https://auth.exemplo.com
-Jwt__Audience=idpplatform-api
+Jwt__Audience=kyvo-api
 Jwt__KeyId=default
 Jwt__RefreshTokenDays=30
 Jwt__SigningKeyPath=keys/oidc-signing.pem
 
 Redis__ConnectionString=host.docker.internal:6379,password=default_password,ssl=false
-Redis__InstanceName=idpplatform:
+Redis__InstanceName=kyvo:
 Redis__TenantIdentifierCacheMinutes=5
 
 SecretProtection__KeyDirectoryPath=keys/data-protection
-SecretProtection__ApplicationName=IdPPlatform
+SecretProtection__ApplicationName=Kyvo
 
 Bootstrap__AdminEmail=admin@example.com
 Bootstrap__AdminPassword=ChangeMe_Strong_Password_12
@@ -497,7 +499,7 @@ ASP.NET Core usa `Section__Property`. Em produção **não** defina `VITE_*` no 
 |----------|-------------------|-------|
 | `Database__*`, `Redis__*`, `Jwt__*`, `Bootstrap__*`, `Email__*` | Não | Edite `.env`, depois `docker compose restart app` |
 | `Jwt__Issuer` | Não | Deve coincidir com a URL pública (`https://auth.meudominio.com.br`) |
-| Código da plataforma | Sim | Nova tag `idpplatform` |
+| Código da plataforma | Sim | Nova tag `kyvo` |
 
 Para **desenvolvimento local** (seções 1–6), `VITE_*` em `frontend/.env` continuam válidos com `npm run dev` na porta 3000 e API na 5000.
 
@@ -510,7 +512,7 @@ Para **desenvolvimento local** (seções 1–6), `VITE_*` em `frontend/.env` con
 5. Subir o app:
 
 ```bash
-cd idpplatform-deploy
+cd kyvo-deploy
 docker compose --env-file .env up -d
 ```
 
@@ -525,7 +527,7 @@ docker compose --env-file .env restart app
 | Problema | Solução |
 |----------|---------|
 | Não conecta ao banco | Verificar PostgreSQL e `Database__ConnectionString` |
-| Container unhealthy ou cai | `docker logs idpplatform-app` — chave JWT ou certificados |
+| Container unhealthy ou cai | `docker logs kyvo-app` — chave JWT ou certificados |
 | Redirect OAuth incorreto | `Jwt__Issuer` diferente da URL do navegador | Defina `Jwt__Issuer` = URL pública; reinicie o app (o redirect `https://<host>/auth/callback` é registrado no bootstrap e atualizado em `GET /platform/status`) |
 | HTTPS não sobe | `fullchain.pem` / `privkey.pem` válidos em `./certs/` |
 | SPA chama API errada | `Jwt__Issuer` incorreto | Igualar `Jwt__Issuer` à URL da barra do navegador e `docker compose restart app` |
@@ -547,12 +549,12 @@ docker compose --env-file .env restart app
 | `Email__FromAddress`, `Email__Region`, etc. | Configuração AWS SES para convites |
 | `Redis__ConnectionString` | Cache distribuído (ElastiCache, Redis Cloud, etc.) |
 | `SecretProtection__KeyDirectoryPath` | Diretório persistente para o keyring do data protection (precisa sobreviver a restarts e ser backup) |
-| `SecretProtection__ApplicationName` | Nome lógico para isolar o keyring (default `IdPPlatform`) |
+| `SecretProtection__ApplicationName` | Nome lógico para isolar o keyring (default `Kyvo`) |
 No `appsettings.json` de produção, o equivalente usa `:` (ex.: `Database:ConnectionString`).
 
 ### Frontend em produção (monólito)
 
-O SPA admin está na imagem `idpplatform` e usa o **mesmo host** que a API. Configure apenas `Jwt__Issuer` no `.env` (seção 7). Para deploy com hosts separados a partir do código-fonte, defina `VITE_*` antes de `npm run build` em `frontend/`.
+O SPA admin está na imagem `kyvo` e usa o **mesmo host** que a API. Configure apenas `Jwt__Issuer` no `.env` (seção 7). Para deploy com hosts separados a partir do código-fonte, defina `VITE_*` antes de `npm run build` em `frontend/`.
 
 ### HTTPS
 
@@ -564,13 +566,13 @@ Em produção, toda comunicação deve ser via HTTPS. O `Jwt:Issuer` deve usar `
 
 ```bash
 # Backend: aplicar migrations
-dotnet ef database update --project IdPPlatform.Infrastructure --startup-project IdPPlatform.API
+dotnet ef database update --project Kyvo.Infrastructure --startup-project Kyvo.API
 
 # Backend: gerar nova migration
-dotnet ef migrations add NomeDaMigration --project IdPPlatform.Infrastructure --startup-project IdPPlatform.API --output-dir Migrations
+dotnet ef migrations add NomeDaMigration --project Kyvo.Infrastructure --startup-project Kyvo.API --output-dir Migrations
 
 # Backend: rodar em dev
-dotnet run --project backend/IdPPlatform.API
+dotnet run --project backend/Kyvo.API
 
 # Frontend: rodar em dev
 cd frontend && npm run dev

@@ -1,8 +1,8 @@
-# IdP Platform — Frontend
+# Kyvo — Frontend
 
 [English](./README.md) | [Português](./README.pt-BR.md)
 
-Painel administrativo (SPA) do IdP Platform. Consome a API via OIDC (authorization code + PKCE) e expõe interface para gestão de tenants, memberships, applications, identity providers e audit logs.
+Painel administrativo (SPA) do Kyvo. Consome a API via OIDC (authorization code + PKCE) e expõe interface para gestão de tenants, memberships, applications, identity providers e audit logs.
 
 > Padrões e convenções obrigatórias: [../rules/frontend-rules.md](../rules/frontend-rules.md).
 
@@ -43,7 +43,7 @@ cp .env.example .env
 | `VITE_API_BASE_URL` | `http://localhost:5000` | URL base da API backend |
 | `VITE_API_VERSION` | `1.0` | Versão da API (gera `/v1.0/...`) |
 | `VITE_API_TIMEOUT_MS` | `30000` | Timeout das requisições Axios (ms) |
-| `VITE_OAUTH_CLIENT_ID` | `platform-admin-web` | Client OAuth registrado no IdP |
+| `VITE_OAUTH_CLIENT_ID` | `platform-admin-web` | Client OAuth registrado na Kyvo |
 | `VITE_OAUTH_REDIRECT_URI` | `http://localhost:3000/auth/callback` | URI de callback OIDC |
 
 Os defaults são mantidos em sincronia com as constantes do backend (`PlatformDefaults.AdminConsole.ClientId` e `DefaultRedirectUris`) e o `appsettings.Development.json` — mude todos juntos.
@@ -89,7 +89,7 @@ npm run preview
 
 ```
 1. Usuário acessa rota protegida
-2. requireAuthLoader verifica status e localStorage (idp.auth.session)
+2. requireAuthLoader verifica status e localStorage (kyvo.auth.session)
 3. Se sem sessão → redirect /login?returnUrl=...
 4. LoginPage → redirectToOidcLogin()
 5. Browser navega para GET /connect/authorize (PKCE, state em sessionStorage)
@@ -97,7 +97,7 @@ npm run preview
 7. Usuário faz login local → cookie de sessão
 8. Backend completa o authorize → redirect /auth/callback?code=...&state=...
 9. AuthCallbackPage valida state, POST /connect/token (code + verifier)
-10. Tokens salvos em localStorage (idp.auth.session)
+10. Tokens salvos em localStorage (kyvo.auth.session)
 11. Redirect para a rota original (returnUrl)
 ```
 
@@ -183,7 +183,7 @@ A página **Identity Providers** (`IdentityProvidersPage.tsx`) orienta o cadastr
 | Cognito | `userPoolId`, `region`, `clientId` | GenericOidc | aviso: login ainda não disponível |
 | Generic | `issuer`, `jwksUri`, `audience` | GenericOidc | aviso: login ainda não disponível |
 
-Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, `IdpCapability`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend. Self-signup de usuários finais é responsabilidade do IdP em `/account/register`, nunca dos apps cliente.
+Tipos TypeScript espelhando os schemas: `src/types/identityProviders.ts` (`FirebaseProviderConfig`, `IdpCapability`, etc.). O `LoginPage.tsx` do painel **não** altera o fluxo OIDC — apenas redireciona para o authorize do backend. Self-signup de usuários finais é responsabilidade da Kyvo em `/account/register`, nunca dos apps cliente.
 
 ---
 

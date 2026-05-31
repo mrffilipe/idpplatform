@@ -1,6 +1,6 @@
-# Maintainer workflow: build and push the IdP Platform monolith image to Docker Hub.
+# Maintainer workflow: build and push the Kyvo monolith image to Docker Hub.
 #
-# Image: mrffilipe/idpplatform (API + admin SPA + nginx TLS proxy)
+# Image: mrffilipe/kyvo (API + admin SPA + nginx TLS proxy)
 # SPA uses same origin as nginx (empty VITE_API_BASE_URL at build); operators set Jwt__Issuer in .env.
 #
 # Triggers:
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Builds and pushes the all-in-one idpplatform image (see docker/Dockerfile).
+  # Builds and pushes the all-in-one kyvo image (see docker/Dockerfile).
   build-app:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: mrffilipe/idpplatform
+          images: mrffilipe/kyvo
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

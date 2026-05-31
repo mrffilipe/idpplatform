@@ -1,8 +1,8 @@
-# PulseCRM API — authentication and authorization (IdP Platform)
+# PulseCRM API — authentication and authorization (Kyvo)
 
 [English](./README.md) | [Português](./README.pt-BR.md)
 
-Sample API that validates JWTs issued by the IdP Platform and calls `POST /v1.0/auth/subscribe` to link tenant + plan (`ApplicationTenant`).
+Sample API that validates JWTs issued by the Kyvo and calls `POST /v1.0/auth/subscribe` to link tenant + plan (`ApplicationTenant`).
 
 ## 1. Register the Application and Client in the admin console
 
@@ -17,9 +17,9 @@ Sample API that validates JWTs issued by the IdP Platform and calls `POST /v1.0/
 `appsettings.Development.json` must point to the same issuer/audience as the platform:
 
 ```json
-"IdP": {
+"Kyvo": {
   "Authority": "http://localhost:5000",
-  "Audience": "idpplatform-api"
+  "Audience": "kyvo-api"
 }
 ```
 
@@ -27,7 +27,7 @@ Sample API that validates JWTs issued by the IdP Platform and calls `POST /v1.0/
 
 ```
 1. SPA → GET {Authority}/connect/authorize?client_id=...&code_challenge=...&scope=openid+profile+email+offline_access
-2. The user authenticates at /account/login OR creates an account at /account/register (central IdP signup; no signup screen in this sample)
+2. The user authenticates at /account/login OR creates an account at /account/register (central Kyvo signup; no signup screen in this sample)
 3. Redirect → http://localhost:5173/auth/callback?code=...&state=...
 4. SPA → POST {Authority}/connect/token (authorization_code + code_verifier)
 5. SPA stores access_token + refresh_token
@@ -39,7 +39,7 @@ Sample API that validates JWTs issued by the IdP Platform and calls `POST /v1.0/
 ## 3. JWT validation in this API
 
 - **Authority** = issuer (`Jwt:Issuer` from the platform, e.g., `http://localhost:5000`)
-- **Audience** = `idpplatform-api` (`aud` claim of the access token)
+- **Audience** = `kyvo-api` (`aud` claim of the access token)
 - Public keys via JWKS: `{Authority}/.well-known/jwks.json`
 
 Useful access-token claims:
@@ -95,7 +95,7 @@ Requires the `offline_access` scope on the client.
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `invalid_scope` / `offline_access` | Client without the scope | Add `offline_access` to allowed scopes |
-| 401 on the CRM API | Wrong audience/issuer | Check `IdP:Authority` and `IdP:Audience` |
+| 401 on the CRM API | Wrong audience/issuer | Check `Kyvo:Authority` and `Kyvo:Audience` |
 | Contacts 400 "missing tid" | Stale token | Refresh the token after onboarding |
 | Subscribe 403/400 | Session without an OAuth client | Sign in via the authorize endpoint of the `pulse-crm-web` client |
 

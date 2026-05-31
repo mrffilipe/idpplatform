@@ -1,9 +1,9 @@
 import axios, { type AxiosError } from 'axios'
 import { env } from '../config/env'
-import { idpClient } from '../config/idpClient'
+import { kyvoClient } from '../config/kyvoClient'
 import type { Contact, MeResponse, OnboardingCompleteResponse } from '../types/crm'
 import { getSession, updateAccessToken } from '../utils/authStorage'
-import { hasTenant } from '@idpplatform/client'
+import { hasTenant } from '@kyvo/client'
 
 export const crmApi = axios.create({
   baseURL: env.crmApiUrl,
@@ -11,15 +11,15 @@ export const crmApi = axios.create({
 })
 
 crmApi.interceptors.request.use((config) => {
-  const token = idpClient.getAccessToken()
+  const token = kyvoClient.getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
-let refreshPromise: ReturnType<typeof idpClient.oidc.refresh> | null = null
-let tenantRefreshPromise: ReturnType<typeof idpClient.refreshAccessTokenWithTenant> | null = null
+let refreshPromise: ReturnType<typeof kyvoClient.oidc.refresh> | null = null
+let tenantRefreshPromise: ReturnType<typeof kyvoClient.refreshAccessTokenWithTenant> | null = null
 
 function isMissingTenantError(error: AxiosError): boolean {
   const message = (error.response?.data as { message?: string } | undefined)?.message
@@ -44,7 +44,7 @@ crmApi.interceptors.response.use(
     if (isMissingTenantError(error) && !original._tenantRetry) {
       original._tenantRetry = true
       try {
-        if (!tenantRefreshPromise) tenantRefreshPromise = idpClient.refreshAccessTokenWithTenant()
+        if (!tenantRefreshPromise) tenantRefreshPromise = kyvoClient.refreshAccessTokenWithTenant()
         const tokens = await tenantRefreshPromise
         original.headers.Authorization = `Bearer ${tokens.access_token}`
         return crmApi.request(original)
@@ -64,7 +64,7 @@ crmApi.interceptors.response.use(
 
     original._retry = true
     try {
-      if (!refreshPromise) refreshPromise = idpClient.oidc.refresh(session.refreshToken)
+      if (!refreshPromise) refreshPromise = kyvoClient.oidc.refresh(session.refreshToken)
       const tokens = await refreshPromise
       updateAccessToken(tokens)
       original.headers.Authorization = `Bearer ${tokens.access_token}`
@@ -84,7 +84,7 @@ export async function ensureTenantAccessToken(): Promise<void> {
     return
   }
   try {
-    await idpClient.refreshAccessTokenWithTenant()
+    await kyvoClient.refreshAccessTokenWithTenant()
   } catch {
     /* CRM resolves tenantId from subscription when JWT lacks tid */
   }

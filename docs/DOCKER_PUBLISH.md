@@ -2,7 +2,9 @@
 
 [English](./DOCKER_PUBLISH.md) | [Português](./DOCKER_PUBLISH.pt-BR.md)
 
-This guide is for **repository maintainers** who build and push the IdP Platform container image. Operators who deploy published images should use [GETTING_STARTED.md § Production](../GETTING_STARTED.md#7-production-deployment-docker-compose).
+> **Pronunciation:** *Kyvo* is pronounced like **"Key"vo** — rhymes with English *key* plus *vo*.
+
+This guide is for **repository maintainers** who build and push the Kyvo container image. Operators who deploy published images should use [GETTING_STARTED.md § Production](../GETTING_STARTED.md#7-production-deployment-docker-compose).
 
 ---
 
@@ -10,7 +12,7 @@ This guide is for **repository maintainers** who build and push the IdP Platform
 
 | Image | Dockerfile | Registry name (suggested) |
 |-------|------------|---------------------------|
-| IdP Platform (monolith) | [docker/Dockerfile](../docker/Dockerfile) | `mrffilipe/idpplatform` |
+| Kyvo (monolith) | [docker/Dockerfile](../docker/Dockerfile) | `mrffilipe/kyvo` |
 
 The monolith includes:
 
@@ -50,7 +52,7 @@ Workflow: [.github/workflows/docker-publish.yml](../.github/workflows/docker-pub
 | **Triggers** | Git tag push matching `v*` (e.g. `v1.0.0`); manual `workflow_dispatch` |
 | **Job** | `build-app` |
 | **Registry** | Docker Hub |
-| **Image** | `mrffilipe/idpplatform` |
+| **Image** | `mrffilipe/kyvo` |
 
 ### Repository secrets (required)
 
@@ -101,11 +103,11 @@ docker login
 From the repository root:
 
 ```bash
-docker build -f docker/Dockerfile -t mrffilipe/idpplatform:<version> .
-docker tag mrffilipe/idpplatform:<version> mrffilipe/idpplatform:latest
+docker build -f docker/Dockerfile -t mrffilipe/kyvo:<version> .
+docker tag mrffilipe/kyvo:<version> mrffilipe/kyvo:latest
 
-docker push mrffilipe/idpplatform:<version>
-docker push mrffilipe/idpplatform:latest
+docker push mrffilipe/kyvo:<version>
+docker push mrffilipe/kyvo:latest
 ```
 
 The image includes an EF Core **migrations bundle**. At runtime, `Database__ApplyMigrationsOnStartup=true` applies migrations before the API starts.
@@ -113,22 +115,22 @@ The image includes an EF Core **migrations bundle**. At runtime, `Database__Appl
 ### 3. Verify
 
 ```bash
-docker pull mrffilipe/idpplatform:<version>
+docker pull mrffilipe/kyvo:<version>
 ```
 
-Optional: `docker scout quickview mrffilipe/idpplatform:<version>`
+Optional: `docker scout quickview mrffilipe/kyvo:<version>`
 
 ---
 
 ## GitHub Container Registry (alternative)
 
-Same Dockerfile; image prefix `ghcr.io/mrffilipe/idpplatform`.
+Same Dockerfile; image prefix `ghcr.io/mrffilipe/kyvo`.
 
 ```bash
 echo $GITHUB_TOKEN | docker login ghcr.io -u mrffilipe --password-stdin
 
-docker tag mrffilipe/idpplatform:<version> ghcr.io/mrffilipe/idpplatform:<version>
-docker push ghcr.io/mrffilipe/idpplatform:<version>
+docker tag mrffilipe/kyvo:<version> ghcr.io/mrffilipe/kyvo:<version>
+docker push ghcr.io/mrffilipe/kyvo:<version>
 ```
 
 PAT needs `write:packages` (and `read:packages` for private images).

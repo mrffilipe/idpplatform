@@ -3,7 +3,7 @@ import type { OidcTokenResponse, TenantContextResult } from '../types/oidc'
 import { tryParseJwtPayload } from './jwt'
 import { tokenExpiresAtIso } from './oidcToken'
 
-const SESSION_STORAGE_KEY = 'idp.auth.session'
+const SESSION_STORAGE_KEY = 'kyvo.auth.session'
 
 export interface AuthSessionStorage {
   accessToken: string

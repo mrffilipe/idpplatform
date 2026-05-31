@@ -1,4 +1,4 @@
-const TENANT_STORAGE_KEY = 'idp.tenant.selected'
+const TENANT_STORAGE_KEY = 'kyvo.tenant.selected'
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined'

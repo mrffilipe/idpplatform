@@ -3,7 +3,7 @@ import type { PaletteMode } from '@mui/material'
 import { createContext, useCallback, useContext, useMemo, useState, type PropsWithChildren } from 'react'
 import { createAppTheme } from '../theme/createAppTheme'
 
-const STORAGE_KEY = 'idp-platform-theme-mode'
+const STORAGE_KEY = 'kyvo-theme-mode'
 
 interface ThemeModeContextValue {
   mode: PaletteMode

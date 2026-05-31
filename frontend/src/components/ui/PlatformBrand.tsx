@@ -15,7 +15,7 @@ export function PlatformBrand({ logoSize = 32, showTitle = true, to = '/', sx }:
       <PlatformLogo size={logoSize} sx={{ mx: 0, flexShrink: 0 }} />
       {showTitle ? (
         <Typography variant="h6" component="span" sx={{ fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-          IdP Platform
+          Kyvo
         </Typography>
       ) : null}
     </>

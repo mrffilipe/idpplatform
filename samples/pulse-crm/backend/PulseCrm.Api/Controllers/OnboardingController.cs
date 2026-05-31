@@ -1,6 +1,6 @@
-using IdPPlatform.AspNetCore;
-using IdPPlatform.Client;
-using IdPPlatform.Client.Models;
+using Kyvo.AspNetCore;
+using Kyvo.Client;
+using Kyvo.Client.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,15 +14,15 @@ namespace PulseCrm.Api.Controllers;
 [Route("api/onboarding")]
 public sealed class OnboardingController : ControllerBase
 {
-    private readonly IIdPUserContext _user;
+    private readonly IKyvoUserContext _user;
     private readonly PulseCrmDbContext _db;
-    private readonly IIdPProductClient _idp;
+    private readonly IKyvoProductClient _idp;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public OnboardingController(
-        IIdPUserContext user,
+        IKyvoUserContext user,
         PulseCrmDbContext db,
-        IIdPProductClient idp,
+        IKyvoProductClient idp,
         IHttpContextAccessor httpContextAccessor)
     {
         _user = user;
@@ -84,7 +84,7 @@ public sealed class OnboardingController : ControllerBase
         var idpResult = idpSubscribe.Context;
         if (idpResult.TenantId is null || idpResult.MembershipId is null)
         {
-            return StatusCode(502, new { message = "IdP subscribe did not return tenant context. Refresh token and retry." });
+            return StatusCode(502, new { message = "Kyvo subscribe did not return tenant context. Refresh token and retry." });
         }
 
         var subscription = new Subscription

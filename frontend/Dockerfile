@@ -2,7 +2,7 @@
 #   docker build -f frontend/Dockerfile \
 #     --build-arg VITE_API_BASE_URL=http://localhost:5000 \
 #     --build-arg VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback \
-#     -t mrffilipe/idpplatform-frontend:<tag> .
+#     -t mrffilipe/kyvo-frontend:<tag> .
 
 # SPA build (monolith image leaves API/redirect URL empty — same origin as nginx at runtime)
 FROM node:22-alpine AS build

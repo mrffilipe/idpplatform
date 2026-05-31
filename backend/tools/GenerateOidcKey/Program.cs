@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 var outputPath = args.Length > 0
     ? args[0]
-    : Path.Combine("..", "..", "IdPPlatform.API", "keys", "oidc-signing.pem");
+    : Path.Combine("..", "..", "Kyvo.API", "keys", "oidc-signing.pem");
 
 var directory = Path.GetDirectoryName(outputPath);
 if (!string.IsNullOrWhiteSpace(directory))

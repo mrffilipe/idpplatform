@@ -1,6 +1,8 @@
-# IdP Platform
+# Kyvo
 
 [English](./README.md) | [Português](./README.pt-BR.md)
+
+> **Pronunciation:** *Kyvo* is pronounced like **"Key"vo** — rhymes with English *key* plus *vo*.
 
 An **identity and access platform (IdP)** for an ecosystem of applications: centralizes local authentication, issues JWT tokens via OIDC, organizes tenants (organizations), members, roles, OAuth applications, and supports federation with external providers (Firebase, Cognito, etc.).
 
@@ -13,7 +15,7 @@ Inspired by Keycloak-style platforms: a managed, multi-tenant IdP with its own a
 | Path | Use |
 |------|-----|
 | **Development** | Clone the repo and follow [GETTING_STARTED.md](./GETTING_STARTED.md) sections **1–6** (source, local PostgreSQL/Redis) |
-| **Production** | Deploy the `idpplatform` monolith image — [GETTING_STARTED.md § Production](./GETTING_STARTED.md#7-production-deployment-docker-compose) (single service, unified `.env`) |
+| **Production** | Deploy the `kyvo` monolith image — [GETTING_STARTED.md § Production](./GETTING_STARTED.md#7-production-deployment-docker-compose) (single service, unified `.env`) |
 | **Maintainers** | Build and push images — [docs/DOCKER_PUBLISH.md](./docs/DOCKER_PUBLISH.md) |
 
 ---

@@ -1,1 +1,1 @@
-export type { OidcTokenResponse } from '@idpplatform/client'
+export type { OidcTokenResponse } from '@kyvo/client'

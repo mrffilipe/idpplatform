@@ -1,6 +1,6 @@
-import { normalizeOidcTokenResponse } from '@idpplatform/client'
+import { normalizeOidcTokenResponse } from '@kyvo/client'
 import type { OidcTokenResponse } from '../types/oidc'
-import { idpClient } from '../config/idpClient'
+import { kyvoClient } from '../config/kyvoClient'
 
 export interface AuthSession {
   accessToken: string
@@ -9,7 +9,7 @@ export interface AuthSession {
 }
 
 export function getSession(): AuthSession | null {
-  const s = idpClient.session.getSession()
+  const s = kyvoClient.session.getSession()
   if (!s) return null
   return {
     accessToken: s.accessToken,
@@ -19,21 +19,21 @@ export function getSession(): AuthSession | null {
 }
 
 export function saveSession(tokens: OidcTokenResponse): AuthSession {
-  idpClient.session.saveFromTokens(tokens)
+  kyvoClient.session.saveFromTokens(tokens)
   return getSession()!
 }
 
 export function updateAccessToken(tokens: OidcTokenResponse): AuthSession {
-  idpClient.session.updateAccessToken(tokens)
+  kyvoClient.session.updateAccessToken(tokens)
   return getSession()!
 }
 
 export function clearSession(): void {
-  idpClient.session.clear()
+  kyvoClient.session.clear()
 }
 
 export function isLoggedIn(): boolean {
-  return Boolean(idpClient.getAccessToken())
+  return Boolean(kyvoClient.getAccessToken())
 }
 
 const ONBOARDING_PLAN_KEY = 'pulsecrm.onboarding.plan'
