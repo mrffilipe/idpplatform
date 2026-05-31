@@ -5,12 +5,6 @@
 
 # dotenv files
 .env
-.env.*
-!.env.example
-
-# OIDC signing keys and Data Protection keyring (generate/mount locally; see backend/README.md)
-**/keys/*.pem
-**/keys/data-protection/
 
 # User-specific files
 *.rsuser

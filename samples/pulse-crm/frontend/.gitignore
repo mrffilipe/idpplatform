@@ -10,10 +10,21 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
 *.local
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Tool caches
+.cache/
+.turbo/
+.eslintcache
 
 # Editor directories and files
 .vscode/*

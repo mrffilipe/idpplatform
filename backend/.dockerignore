@@ -1,11 +1,2 @@
-**/bin/
-**/obj/
-**/.vs/
-**/.vscode/
-**/keys/*.pem
-**/keys/data-protection/
-**/.env
-**/.env.*
-!**/.env.example
-**/TestResults/
-tools/
+# Builds use the repository root as context (`docker build -f backend/Dockerfile .`).
+# Docker only reads /.dockerignore at the context root — see the repo-root file for rules.

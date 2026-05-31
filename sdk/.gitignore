@@ -1,7 +1,40 @@
+# Kyvo SDK — shared ignores (see also sdk/dotnet/.gitignore and sdk/typescript/.gitignore)
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Editor / IDE (repo-local)
+.idea/
+*.code-workspace
+
+# .NET build artifacts (redundant with sdk/dotnet/.gitignore; covers stray outputs)
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+TestResults/
+artifacts/
+*.nupkg
+*.snupkg
+
+# Node / TypeScript (redundant with sdk/typescript/.gitignore; covers workspace hoisting)
 node_modules/
 dist/
-bin/
-obj/
-*.user
-.vs/
-*.nupkg
+*.tsbuildinfo
+coverage/
+.npm/
+.pnpm-store/
+
+# Pack / publish scratch
+*.tgz

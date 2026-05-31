@@ -1,17 +1,56 @@
+# Docker build context is always the repository root:
+#   docker build -f docker/Dockerfile .
+#   docker build -f backend/Dockerfile .
+#   docker build -f frontend/Dockerfile .
+#
+# This file is the only .dockerignore Docker CLI reads for those commands.
+
 **/.git
 **/.gitignore
+**/.dockerignore
 **/.cursor
-**/node_modules/
-**/dist/
-**/bin/
-**/obj/
-**/.vs/
-**/.vscode/
+**/.github
+**/.idea
+**/.vscode
+**/.vs
+agent-transcripts/
+
+# Docs / rules / SDK / samples (not copied by any production image)
+docs/
+rules/
+sdk/
+samples/
+**/*.md
+
+# Backend: local tooling and secrets (API + monolith)
+backend/tools/
 backend/**/keys/*.pem
 backend/**/keys/data-protection/
+
+# Node (admin SPA + any workspace)
+**/node_modules/
+**/dist/
+**/build/
+**/.turbo/
+**/.cache/
+**/coverage/
+**/*.tsbuildinfo
+frontend/swagger.json
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+**/artifacts/
+**/*.user
+**/*.suo
+
+# Secrets
 **/.env
 **/.env.*
 !**/.env.example
-**/TestResults/
-samples/
-agent-transcripts/
+
+# Logs / OS
+**/*.log
+**/.DS_Store
+**/Thumbs.db
